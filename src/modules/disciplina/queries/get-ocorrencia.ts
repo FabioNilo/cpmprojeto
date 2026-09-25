@@ -1,0 +1,203 @@
+import "server-only";
+
+import { prisma } from "@/db/prisma";
+
+export async function getOcorrencia(id: string, colegioId: string) {
+  return prisma.ocorrencia.findFirst({
+    where: { id, colegioId },
+    select: {
+      id: true,
+      numero: true,
+      tipo: true,
+      status: true,
+      dataOcorrencia: true,
+      local: true,
+      materia: true,
+      descricao: true,
+      sigiloso: true,
+      enviadaEm: true,
+      encerradaEm: true,
+      motivoArquivamento: true,
+      createdAt: true,
+      comunicanteId: true,
+      comunicante: { select: { id: true, nome: true } },
+      motivoSugerido: {
+        select: { id: true, codigo: true, descricao: true, natureza: true },
+      },
+      sindicancias: {
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          numero: true,
+          objeto: true,
+          status: true,
+          conclusao: true,
+          createdAt: true,
+          concluidaEm: true,
+          sindicante: { select: { nome: true } },
+          instauradaPor: { select: { nome: true } },
+        },
+      },
+      alunos: {
+        orderBy: { ordem: "asc" },
+        select: {
+          id: true,
+          ordem: true,
+          numeroProcesso: true,
+          status: true,
+          resumo: true,
+          manifestacaoAcolhida: true,
+          parecerManifestacao: true,
+          avaliadoEm: true,
+          avaliadoPor: { select: { nome: true } },
+          aluno: {
+            select: {
+              id: true,
+              nome: true,
+              matriculaGeral: true,
+              necessidadeEspecial: true,
+            },
+          },
+          manifestacoes: {
+            orderBy: { createdAt: "asc" },
+            select: {
+              id: true,
+              tipo: true,
+              texto: true,
+              viaPresencial: true,
+              createdAt: true,
+              autor: { select: { nome: true } },
+              registradoPor: { select: { nome: true } },
+            },
+          },
+          ciencias: {
+            orderBy: { createdAt: "asc" },
+            select: {
+              id: true,
+              sobre: true,
+              meio: true,
+              observacao: true,
+              createdAt: true,
+              confirmadaPor: { select: { nome: true } },
+            },
+          },
+          afastamentos: {
+            orderBy: { createdAt: "desc" },
+            select: {
+              id: true,
+              status: true,
+              justificativa: true,
+              diasIniciais: true,
+              inicioEm: true,
+              fimPrevisto: true,
+              fimProrrogado: true,
+              motivoEncerramento: true,
+              createdAt: true,
+              determinadoPor: { select: { nome: true } },
+            },
+          },
+          conselhos: {
+            orderBy: { createdAt: "desc" },
+            select: {
+              id: true,
+              numero: true,
+              objeto: true,
+              status: true,
+              parecer: true,
+              recomendacao: true,
+              votosFavor: true,
+              votosContra: true,
+              createdAt: true,
+              concluidoEm: true,
+              presididoPor: { select: { nome: true } },
+            },
+          },
+          enquadramentos: {
+            where: { revogadoEm: null },
+            orderBy: { createdAt: "asc" },
+            select: {
+              id: true,
+              natureza: true,
+              fundamentacao: true,
+              createdAt: true,
+              transgressao: {
+                select: { codigo: true, descricao: true, natureza: true },
+              },
+              registradoPor: { select: { nome: true } },
+            },
+          },
+          decisoes: {
+            where: { revogadoEm: null },
+            orderBy: { createdAt: "desc" },
+            take: 1,
+            select: {
+              id: true,
+              resultado: true,
+              naturezaApurada: true,
+              sancaoTipoCodigo: true,
+              diasSancao: true,
+              fundamentacao: true,
+              numero: true,
+              createdAt: true,
+              decididoPorPerfilCodigo: true,
+              decididoPor: { select: { nome: true } },
+              atenuantes: {
+                select: {
+                  atenuante: { select: { codigo: true, descricao: true } },
+                },
+              },
+              agravantes: {
+                select: {
+                  agravante: { select: { codigo: true, descricao: true } },
+                },
+              },
+            },
+          },
+          sancoes: {
+            orderBy: { createdAt: "desc" },
+            select: {
+              id: true,
+              tipoSancaoCodigo: true,
+              dias: true,
+              impactoPontos: true,
+              status: true,
+              numeroPublicacao: true,
+              observacao: true,
+              aplicadaEm: true,
+              cumpridaEm: true,
+              aplicadaPor: { select: { nome: true } },
+              modificacoes: {
+                orderBy: { createdAt: "asc" },
+                select: {
+                  id: true,
+                  tipo: true,
+                  motivo: true,
+                  createdAt: true,
+                  registradoPor: { select: { nome: true } },
+                },
+              },
+              reconsideracoes: {
+                orderBy: { createdAt: "desc" },
+                select: {
+                  id: true,
+                  status: true,
+                  texto: true,
+                  prazoFinal: true,
+                  parecerDecisao: true,
+                  numero: true,
+                  novoTipoSancaoCodigo: true,
+                  novosDias: true,
+                  createdAt: true,
+                  decididaEm: true,
+                  decididoPorPerfilCodigo: true,
+                  solicitante: { select: { nome: true } },
+                  decididoPor: { select: { nome: true } },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+}

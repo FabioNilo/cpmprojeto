@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img" aria-label="Fachada institucional estilizada">
+  <rect width="1600" height="1000" fill="#13253d"/>
+  <rect x="0" y="650" width="1600" height="350" fill="#0b1b31"/>
+  <rect x="260" y="325" width="1080" height="360" fill="#d8dde3"/>
+  <rect x="310" y="375" width="120" height="230" fill="#102743"/>
+  <rect x="470" y="375" width="120" height="230" fill="#102743"/>
+  <rect x="630" y="375" width="120" height="230" fill="#102743"/>
+  <rect x="850" y="375" width="120" height="230" fill="#102743"/>
+  <rect x="1010" y="375" width="120" height="230" fill="#102743"/>
+  <rect x="1170" y="375" width="120" height="230" fill="#102743"/>
+  <rect x="720" y="520" width="160" height="165" fill="#07111f"/>
+  <rect x="220" y="685" width="1160" height="45" fill="#c59b35"/>
+  <path d="M210 325h1180L800 120 210 325z" fill="#eef1f4"/>
+  <path d="M760 190h80v88h-80z" fill="#c59b35"/>
+  <circle cx="800" cy="234" r="24" fill="#102743"/>
+  <path d="M0 760c170-58 330-72 500-45 190 30 310 112 505 85 170-24 301-105 595-55v255H0z" fill="#07111f" opacity=".55"/>
+</svg>

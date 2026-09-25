@@ -1,0 +1,26 @@
+# Compose de PRODUCAO (EasyPanel). Um unico servico: a aplicacao Next.js.
+# O banco e o storage de anexos sao o Supabase (externo) -- nao ha "db" aqui.
+#
+# NAO coloque valores reais abaixo. Defina cada ${VAR} na aba de variaveis
+# de ambiente do app no EasyPanel (fica criptografado, nao entra na imagem
+# nem no controle de versao). O EasyPanel injeta essas variaveis no ambiente
+# do container antes do docker compose interpolar os "${...}".
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000"
+    environment:
+      # Postgres do Supabase, session pooler porta 5432 (NAO 6543 -- o
+      # transaction pooler quebra $transaction interativa que o app usa).
+      DATABASE_URL: ${DATABASE_URL}
+      SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-cpm_session}
+      SESSION_SECRET: ${SESSION_SECRET}
+      NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-Sistema Disciplinar CPM}
+      # Supabase Storage (anexos disciplinares - D10).
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      SUPABASE_STORAGE_BUCKET: ${SUPABASE_STORAGE_BUCKET:-anexos-disciplina}

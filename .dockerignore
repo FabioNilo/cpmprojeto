@@ -1,0 +1,15 @@
+node_modules
+.next
+.env
+.env.local
+.env*.local
+coverage
+*.log
+.git
+e2e
+docs
+prisma/import/.data
+bancoFad
+bancoFad.accdb
+.next-dev.out.log
+.next-dev.err.log

@@ -1,0 +1,19 @@
+node_modules
+.next
+out
+coverage
+.env
+.env.local
+.env.*.local
+*.log
+.next-dev.*.log
+dist
+tsconfig.tsbuildinfo
+
+# Import de dados reais (PII de alunos) - nunca versionar
+prisma/import/.data/
+/bancoFad
+/bancoFad.accdb
+.playwright
+test-results
+playwright-report

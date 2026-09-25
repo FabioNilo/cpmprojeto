@@ -1,0 +1,357 @@
+# REGRAS DE NEGÓCIO — MÓDULO DISCIPLINAR CPM
+
+Implemente o módulo disciplinar seguindo estas regras como fonte de verdade.
+
+## 1. Conceito principal
+
+Uma **comunicação disciplinar registra um fato**, mas não significa automaticamente que o aluno cometeu uma transgressão ou recebeu punição.
+
+Professores, servidores e militares podem comunicar fatos. O enquadramento definitivo e a eventual sanção são realizados posteriormente pela autoridade competente.
+
+Uma ocorrência pode envolver um ou vários alunos, mas cada aluno deverá possuir seu próprio processo individual dentro da ocorrência.
+
+Exemplo:
+
+Ocorrência 123
+
+* Aluno A → justificado
+* Aluno B → procedente
+* Aluno C → arquivado
+* Aluno D → aguardando manifestação
+
+Não duplicar a ocorrência quando houver vários alunos.
+
+---
+
+## 2. Natureza das transgressões
+
+As transgressões possuem quatro classificações:
+
+* LEVE
+* MEDIA
+* GRAVE
+* ELIMINATORIA
+
+O usuário que comunica o fato não precisa selecionar obrigatoriamente a transgressão.
+
+O enquadramento será realizado durante a análise disciplinar.
+
+Uma ocorrência de um aluno poderá possuir mais de um enquadramento quando houver prática simultânea ou conexão entre faltas.
+
+---
+
+## 3. Fluxo disciplinar
+
+Fluxo principal:
+
+COMUNICAÇÃO DO FATO
+→ AVERIGUAÇÃO
+→ COMUNICAÇÃO AO RESPONSÁVEL
+→ MANIFESTAÇÃO/JUSTIFICAÇÃO
+→ CIÊNCIA DO RESPONSÁVEL
+→ ANÁLISE
+→ ENQUADRAMENTO
+→ DECISÃO
+→ SANÇÃO, SE CABÍVEL
+→ CIÊNCIA DA DECISÃO
+→ PRAZO PARA RECONSIDERAÇÃO
+→ ENCERRAMENTO
+
+Não aplicar sanção automaticamente após o registro da ocorrência.
+
+O processo deve respeitar contraditório, ampla defesa, manifestação e ciência quando exigidos.
+
+---
+
+## 4. Manifestação e justificação
+
+O aluno ou seu responsável poderá apresentar esclarecimento/justificação.
+
+Se a justificativa for acolhida:
+
+STATUS = JUSTIFICADO
+
+e nenhuma sanção será aplicada.
+
+A análise deverá considerar:
+
+* comportamento anterior;
+* causas do fato;
+* natureza do fato;
+* consequências;
+* justificativas;
+* circunstâncias atenuantes;
+* circunstâncias agravantes.
+
+Manifestações já enviadas não devem ser alteradas. Uma complementação deve gerar novo registro.
+
+---
+
+## 5. Atenuantes e agravantes
+
+Permitir selecionar atenuantes e agravantes durante a análise.
+
+Exemplos de atenuantes:
+
+* aluno novato nos primeiros 2 meses;
+* comportamento ÓTIMO ou EXCEPCIONAL;
+* primeira falta;
+* falta de prática;
+* serviços relevantes prestados;
+* ação para evitar mal maior.
+
+Exemplos de agravantes:
+
+* aluno graduado;
+* aluno xerife;
+* comportamento INSUFICIENTE ou INCOMPATÍVEL;
+* falta durante serviço, aula ou instrução;
+* reincidência da mesma falta em até 3 anos;
+* múltiplas faltas relacionadas;
+* conluio entre alunos;
+* abuso de autoridade;
+* falta praticada em público;
+* premeditação.
+
+Esses itens devem ser parametrizados no banco, não apenas armazenados como texto.
+
+---
+
+## 6. Sanções
+
+Ordem crescente:
+
+1. IMPEDIMENTO
+2. ADVERTENCIA
+3. REPREENSAO
+4. SUSPENSAO_SEM_PREJUIZO
+5. SUSPENSAO_COM_PREJUIZO
+6. TRANSFERENCIA_COMPULSORIA
+
+Impacto na pontuação:
+
+IMPEDIMENTO = 0
+ADVERTENCIA = -0.10
+REPREENSAO = -0.20
+SUSPENSAO_SEM_PREJUIZO = -0.30
+SUSPENSAO_COM_PREJUIZO = -0.50
+
+Transferência compulsória não deve ser tratada simplesmente como desconto de pontos.
+
+Mesmo sem desconto, o impedimento deve permanecer no histórico para controle de reincidência.
+
+---
+
+## 7. Competência para aplicar sanção
+
+Validar a competência também no backend.
+
+COMANDANTE_PELOTAO
+→ impedimento até suspensão sem prejuízo.
+
+COMANDANTE_COMPANHIA
+→ impedimento até 3 dias de suspensão sem prejuízo.
+
+CHEFE_CORPO_ALUNOS
+→ impedimento até 5 dias de suspensão com prejuízo.
+
+DIRETOR_PM
+→ impedimento até transferência compulsória.
+
+Nunca confiar apenas na interface para validar essa autorização.
+
+---
+
+## 8. Pontuação de comportamento
+
+Todo aluno matriculado pela primeira vez começa com:
+
+pontuação = 8.00
+classificação = BOM
+
+Faixas:
+
+10.00 = EXCEPCIONAL
+9.00–9.99 = OTIMO
+7.00–8.99 = BOM
+5.00–6.99 = REGULAR
+2.00–4.99 = INSUFICIENTE
+abaixo de 2.00 = INCOMPATIVEL
+
+A pontuação acompanha o aluno durante sua permanência no CPM e não deve voltar automaticamente para 8.00 a cada ano letivo.
+
+Aluno com pontuação abaixo de 6.00 deve ser destacado para acompanhamento disciplinar e ciência da família.
+
+---
+
+## 9. Recuperação automática de pontos
+
+Uma sanção que retirou pontos deverá ter seus pontos restaurados após 1 ano.
+
+Exemplo:
+
+Advertência em 10/03/2026
+→ -0.10
+
+Em 10/03/2027
+→ +0.10 por RESTAURACAO_SANCAO
+
+Não apagar a sanção antiga.
+
+Registrar a recuperação como nova movimentação.
+
+A pontuação deve ser calculada através do histórico de movimentos.
+
+Exemplos de movimentos:
+
+SANCAO
+ELOGIO
+RESTAURACAO_SANCAO
+BONIFICACAO_ANUAL
+AJUSTE_ADMINISTRATIVO
+
+Manter auditoria completa.
+
+---
+
+## 10. Prazo de 48 horas
+
+O prazo de 48 horas previsto no regulamento refere-se especificamente à comunicação/justificação de:
+
+* falta escolar;
+* atraso escolar.
+
+NÃO utilizar 48 horas como prazo genérico para manifestação disciplinar.
+
+---
+
+## 11. Ciência
+
+A ciência do responsável deve ser registrada formalmente.
+
+Abrir ou visualizar uma página não significa ciência.
+
+Exigir uma ação explícita:
+
+"Confirmar ciência"
+
+Registrar:
+
+* responsável;
+* ocorrência/decisão;
+* data e hora;
+* tipo da ciência;
+* dados de auditoria disponíveis.
+
+---
+
+## 12. Pedido de reconsideração
+
+Após a ciência/publicação da punição, o aluno ou responsável poderá pedir reconsideração em até:
+
+15 DIAS SEGUIDOS.
+
+Enquanto houver reconsideração pendente:
+
+* suspender os efeitos da sanção;
+* manter a sanção registrada;
+* não excluir histórico;
+* indicar visualmente que os efeitos estão suspensos.
+
+Competência para analisar:
+
+LEVE → Chefe do Corpo de Alunos
+MEDIA → Diretor-Adjunto
+GRAVE → Diretor PM
+ELIMINATORIA → Diretor PM
+
+A decisão do recurso não poderá agravar a sanção.
+
+---
+
+## 13. Afastamento cautelar
+
+Para falta eliminatória ou situação com risco à ordem, disciplina ou segurança:
+
+* Diretor PM pode determinar afastamento cautelar;
+* máximo inicial de 5 dias letivos;
+* uma única prorrogação por igual período;
+* não é sanção;
+* deve possuir justificativa;
+* aluno deve continuar tendo acesso às atividades pedagógicas.
+
+Criar entidade própria para afastamento cautelar.
+
+Não registrar afastamento cautelar como punição.
+
+---
+
+## 14. Estados sugeridos
+
+Ocorrência:
+
+RASCUNHO
+ENVIADA
+EM_AVERIGUACAO
+AGUARDANDO_MANIFESTACAO
+AGUARDANDO_CIENCIA
+EM_ANALISE
+DECIDIDA
+ENCERRADA
+ARQUIVADA
+
+Processamento individual do aluno:
+
+PENDENTE
+JUSTIFICADO
+PROCEDENTE
+IMPROCEDENTE
+ARQUIVADO
+
+Reconsideração:
+
+PENDENTE
+DEFERIDA
+INDEFERIDA
+ENCERRADA
+
+---
+
+## 15. Regra arquitetural fundamental
+
+Não armazenar somente o valor atual da pontuação.
+
+Manter um ledger/histórico imutável de movimentações de comportamento.
+
+Não excluir fisicamente:
+
+* ocorrências;
+* manifestações;
+* decisões;
+* sanções;
+* reconsiderações;
+* movimentações de pontos.
+
+Correções devem gerar novos registros ou eventos de ajuste, preservando auditoria.
+
+A Ficha Disciplinar do aluno deve ser reconstruível a partir do histórico.
+
+---
+
+## REGRA CENTRAL
+
+O sistema deve representar o processo disciplinar, não apenas uma tabela de ocorrências.
+
+Uma ocorrência registra um fato.
+
+O fato é averiguado.
+
+O aluno/responsável pode se manifestar.
+
+A autoridade analisa.
+
+A falta pode ser enquadrada ou justificada.
+
+Somente depois pode existir decisão e eventual sanção.
+
+Toda alteração de comportamento deve possuir origem rastreável e histórico de auditoria.

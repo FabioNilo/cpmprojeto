@@ -1,0 +1,1180 @@
+generator client {
+  provider      = "prisma-client-js"
+  // "native" cobre o Windows local; o alvo musl cobre o container Alpine de
+  // producao (Dockerfile). "prisma generate" roda dentro do container durante
+  // o build, entao o alvo correto e sempre incluido.
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Colegio {
+  id        String   @id @default(uuid()) @db.Uuid
+  nome      String
+  codigo    String   @unique
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  usuarios                     UsuarioColegio[]
+  auditorias                   Auditoria[]
+  sessoes                      Sessao[]
+  alunos                       AlunoVinculoColegio[]
+  anosLetivos                  AnoLetivo[]
+  turmas                       Turma[]
+  matriculas                   Matricula[]
+  ocorrencias                  Ocorrencia[]
+  movimentosPontuacao          MovimentoPontuacao[]
+  elogios                      Elogio[]
+  afastamentos                 AfastamentoCautelar[]
+  sindicancias                 Sindicancia[]
+  conselhos                    ConselhoDisciplinar[]
+  fichasDisciplinares          FichaDisciplinar[]
+  anexos                       Anexo[]
+  sequenciasNumeracao          SequenciaNumeracao[]
+  solicitacoesSenhaResponsavel SolicitacaoSenhaResponsavel[]
+  notificacoesResponsavel      NotificacaoResponsavel[]
+
+  @@map("colegios")
+}
+
+model Usuario {
+  id                       String    @id @default(uuid()) @db.Uuid
+  nome                     String
+  // Posto/graduacao (ex.: "1o TEN PM", "CAP PM", "ST PM"). Opcional, exibido
+  // junto ao nome nos documentos oficiais gerados (comunicacao, decisao...).
+  posto                    String?
+  cpf                      String?   @unique
+  username                 String?   @unique
+  email                    String?   @unique
+  passwordHash             String    @map("password_hash")
+  ativo                    Boolean   @default(true)
+  ultimoLogin              DateTime? @map("ultimo_login")
+  // Onboarding do responsavel: senha provisoria a trocar + aceite do termo.
+  mudarSenhaObrigatoria    Boolean   @default(false) @map("mudar_senha_obrigatoria")
+  termoResponsavelAceitoEm DateTime? @map("termo_responsavel_aceito_em")
+  termoResponsavelVersao   String?   @map("termo_responsavel_versao")
+  createdAt                DateTime  @default(now()) @map("created_at")
+  updatedAt                DateTime  @updatedAt @map("updated_at")
+
+  colegios                       UsuarioColegio[]
+  auditorias                     Auditoria[]
+  sessoes                        Sessao[]
+  responsavel                    Responsavel?
+  tokensRecuperacaoSenha         TokenRecuperacaoSenha[]
+  solicitacoesSenhaFeitas        SolicitacaoSenhaResponsavel[] @relation("SolicitacoesSenhaUsuario")
+  solicitacoesSenhaAtendidas     SolicitacaoSenhaResponsavel[] @relation("SolicitacoesSenhaAtendidas")
+  ocorrenciasComunicadas         Ocorrencia[]
+  manifestacoesAutor             Manifestacao[]                @relation("ManifestacoesAutor")
+  manifestacoesRegistradas       Manifestacao[]                @relation("ManifestacoesRegistradas")
+  cienciasConfirmadas            Ciencia[]                     @relation("CienciasConfirmadas")
+  processosAvaliados             OcorrenciaAluno[]             @relation("ProcessosAvaliados")
+  enquadramentosRegistrados      EnquadramentoDisciplinar[]    @relation("EnquadramentosRegistrados")
+  enquadramentosRevogados        EnquadramentoDisciplinar[]    @relation("EnquadramentosRevogados")
+  decisoesTomadas                Decisao[]                     @relation("DecisoesTomadas")
+  decisoesRevogadas              Decisao[]                     @relation("DecisoesRevogadas")
+  sancoesAplicadas               Sancao[]                      @relation("SancoesAplicadas")
+  modificacoesSancao             ModificacaoSancao[]           @relation("ModificacoesSancaoRegistradas")
+  movimentosRegistrados          MovimentoPontuacao[]          @relation("MovimentosRegistrados")
+  elogiosRegistrados             Elogio[]                      @relation("ElogiosRegistrados")
+  reconsideracoesSolicitadas     Reconsideracao[]              @relation("ReconsideracoesSolicitadas")
+  reconsideracoesDecididas       Reconsideracao[]              @relation("ReconsideracoesDecididas")
+  afastamentosDeterminados       AfastamentoCautelar[]         @relation("AfastamentosDeterminados")
+  sindicanciasInstauradas        Sindicancia[]                 @relation("SindicanciasInstauradas")
+  sindicanciasConduzidas         Sindicancia[]                 @relation("SindicanciasConduzidas")
+  conselhosInstaurados           ConselhoDisciplinar[]         @relation("ConselhosInstaurados")
+  conselhosPresididos            ConselhoDisciplinar[]         @relation("ConselhosPresididos")
+  fichasGeradas                  FichaDisciplinar[]            @relation("FichasGeradas")
+  anexosEnviados                 Anexo[]                       @relation("AnexosEnviados")
+  notificacoesResponsavelCriadas NotificacaoResponsavel[]      @relation("NotificacoesResponsavelCriadas")
+
+  @@map("usuarios")
+}
+
+model UsuarioColegio {
+  id        String   @id @default(uuid()) @db.Uuid
+  usuarioId String   @map("usuario_id") @db.Uuid
+  colegioId String   @map("colegio_id") @db.Uuid
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  usuario Usuario                @relation(fields: [usuarioId], references: [id])
+  colegio Colegio                @relation(fields: [colegioId], references: [id])
+  perfis  UsuarioColegioPerfil[]
+
+  @@unique([usuarioId, colegioId])
+  @@index([colegioId, ativo])
+  @@map("usuario_colegios")
+}
+
+model Perfil {
+  id        Int      @id @default(autoincrement())
+  codigo    String   @unique
+  nome      String
+  descricao String?
+  sistema   Boolean  @default(true)
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  usuarios   UsuarioColegioPerfil[]
+  permissoes PerfilPermissao[]
+
+  @@map("perfis")
+}
+
+model Permissao {
+  id        Int      @id @default(autoincrement())
+  codigo    String   @unique
+  nome      String
+  descricao String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  perfis PerfilPermissao[]
+
+  @@map("permissoes")
+}
+
+model UsuarioColegioPerfil {
+  usuarioColegioId String   @map("usuario_colegio_id") @db.Uuid
+  perfilId         Int      @map("perfil_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  usuarioColegio UsuarioColegio @relation(fields: [usuarioColegioId], references: [id])
+  perfil         Perfil         @relation(fields: [perfilId], references: [id])
+
+  @@id([usuarioColegioId, perfilId])
+  @@map("usuario_colegio_perfis")
+}
+
+model PerfilPermissao {
+  perfilId    Int      @map("perfil_id")
+  permissaoId Int      @map("permissao_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  perfil    Perfil    @relation(fields: [perfilId], references: [id])
+  permissao Permissao @relation(fields: [permissaoId], references: [id])
+
+  @@id([perfilId, permissaoId])
+  @@map("perfil_permissoes")
+}
+
+model Sessao {
+  id             String    @id @default(uuid()) @db.Uuid
+  usuarioId      String    @map("usuario_id") @db.Uuid
+  colegioAtivoId String    @map("colegio_ativo_id") @db.Uuid
+  tokenHash      String    @unique @map("token_hash")
+  expiresAt      DateTime  @map("expires_at")
+  revokedAt      DateTime? @map("revoked_at")
+  ip             String?
+  userAgent      String?   @map("user_agent")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  usuario      Usuario @relation(fields: [usuarioId], references: [id])
+  colegioAtivo Colegio @relation(fields: [colegioAtivoId], references: [id])
+
+  @@index([usuarioId, expiresAt])
+  @@index([colegioAtivoId])
+  @@map("sessoes")
+}
+
+model Auditoria {
+  id              String   @id @default(uuid()) @db.Uuid
+  usuarioId       String?  @map("usuario_id") @db.Uuid
+  colegioId       String?  @map("colegio_id") @db.Uuid
+  acao            String
+  entidade        String?
+  entidadeId      String?  @map("entidade_id")
+  dadosAnteriores Json?    @map("dados_anteriores")
+  dadosNovos      Json?    @map("dados_novos")
+  ip              String?
+  userAgent       String?  @map("user_agent")
+  dataHora        DateTime @default(now()) @map("data_hora")
+
+  usuario Usuario? @relation(fields: [usuarioId], references: [id])
+  colegio Colegio? @relation(fields: [colegioId], references: [id])
+
+  @@index([colegioId, dataHora])
+  @@index([usuarioId, dataHora])
+  @@index([acao, dataHora])
+  @@map("auditoria")
+}
+
+model TentativaLogin {
+  id            String   @id @default(uuid()) @db.Uuid
+  identificador String
+  ip            String?
+  sucesso       Boolean
+  userAgent     String?  @map("user_agent")
+  criadoEm      DateTime @default(now()) @map("criado_em")
+
+  @@index([identificador, criadoEm])
+  @@index([ip, criadoEm])
+  @@map("tentativas_login")
+}
+
+model TokenRecuperacaoSenha {
+  id        String    @id @default(uuid()) @db.Uuid
+  usuarioId String    @map("usuario_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  ip        String?
+  userAgent String?   @map("user_agent")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id])
+
+  @@index([usuarioId, createdAt])
+  @@map("tokens_recuperacao_senha")
+}
+
+model Responsavel {
+  id        String   @id @default(uuid()) @db.Uuid
+  usuarioId String   @unique @map("usuario_id") @db.Uuid
+  telefone  String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  usuario      Usuario                  @relation(fields: [usuarioId], references: [id])
+  alunos       AlunoResponsavel[]
+  notificacoes NotificacaoResponsavel[]
+
+  @@map("responsaveis")
+}
+
+// Responsavel nao tem e-mail/SMTP configurado: ao "esquecer a senha", em vez
+// de enviar link por e-mail, sinaliza um pedido para quem administra
+// responsaveis (Chefe do Corpo de Alunos, Diretor-Adjunto, Diretor PM ou
+// Admin) atender manualmente, gerando senha provisoria e repassando por
+// telefone. Nada e apagado: "atendida" so marca, nunca deleta a linha.
+model SolicitacaoSenhaResponsavel {
+  id            String    @id @default(uuid()) @db.Uuid
+  usuarioId     String    @map("usuario_id") @db.Uuid
+  colegioId     String    @map("colegio_id") @db.Uuid
+  criadoEm      DateTime  @default(now()) @map("criado_em")
+  atendidaEm    DateTime? @map("atendida_em")
+  atendidaPorId String?   @map("atendida_por_id") @db.Uuid
+
+  usuario     Usuario  @relation("SolicitacoesSenhaUsuario", fields: [usuarioId], references: [id])
+  colegio     Colegio  @relation(fields: [colegioId], references: [id])
+  atendidaPor Usuario? @relation("SolicitacoesSenhaAtendidas", fields: [atendidaPorId], references: [id])
+
+  @@index([colegioId, atendidaEm])
+  @@index([usuarioId, atendidaEm])
+  @@map("solicitacoes_senha_responsavel")
+}
+
+model Aluno {
+  id                  String   @id @default(uuid()) @db.Uuid
+  nome                String
+  matriculaGeral      String?  @unique @map("matricula_geral")
+  ativo               Boolean  @default(true)
+  // Aluno com laudo/condicao que exige avaliacao individualizada da sancao
+  // (ex.: neurodivergencia). Quando true, a tela de aplicacao de sancao libera
+  // o impacto em pontos para edicao manual em vez de usar o valor fixo do
+  // catalogo (TipoSancao.impactoPontos) — ver Sancao.impactoManual.
+  necessidadeEspecial Boolean  @default(false) @map("necessidade_especial")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  responsaveis        AlunoResponsavel[]
+  matriculas          Matricula[]
+  vinculosColegio     AlunoVinculoColegio[]
+  ocorrencias         OcorrenciaAluno[]
+  movimentosPontuacao MovimentoPontuacao[]
+  elogios             Elogio[]
+  fichasDisciplinares FichaDisciplinar[]
+
+  @@index([ativo])
+  @@map("alunos")
+}
+
+model AlunoVinculoColegio {
+  id          String             @id @default(uuid()) @db.Uuid
+  alunoId     String             @map("aluno_id") @db.Uuid
+  colegioId   String             @map("colegio_id") @db.Uuid
+  status      StatusVinculoAluno @default(ATIVO)
+  dataEntrada DateTime?          @map("data_entrada")
+  dataSaida   DateTime?          @map("data_saida")
+  motivoSaida String?            @map("motivo_saida")
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+
+  aluno      Aluno       @relation(fields: [alunoId], references: [id])
+  colegio    Colegio     @relation(fields: [colegioId], references: [id])
+  matriculas Matricula[]
+
+  @@unique([alunoId, colegioId])
+  @@unique([id, alunoId, colegioId])
+  @@index([colegioId, status])
+  @@index([alunoId, status])
+  @@map("aluno_vinculos_colegio")
+}
+
+model AlunoResponsavel {
+  alunoId       String   @map("aluno_id") @db.Uuid
+  responsavelId String   @map("responsavel_id") @db.Uuid
+  parentesco    String?
+  principal     Boolean  @default(false)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  aluno       Aluno       @relation(fields: [alunoId], references: [id])
+  responsavel Responsavel @relation(fields: [responsavelId], references: [id])
+
+  @@id([alunoId, responsavelId])
+  @@index([responsavelId])
+  @@map("aluno_responsaveis")
+}
+
+model AnoLetivo {
+  id        String   @id @default(uuid()) @db.Uuid
+  colegioId String   @map("colegio_id") @db.Uuid
+  ano       Int
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  colegio    Colegio     @relation(fields: [colegioId], references: [id])
+  turmas     Turma[]
+  matriculas Matricula[]
+
+  @@unique([colegioId, ano])
+  @@unique([id, colegioId])
+  @@map("anos_letivos")
+}
+
+model Turma {
+  id          String   @id @default(uuid()) @db.Uuid
+  colegioId   String   @map("colegio_id") @db.Uuid
+  anoLetivoId String   @map("ano_letivo_id") @db.Uuid
+  nome        String
+  turno       String?
+  ativa       Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  colegio    Colegio     @relation(fields: [colegioId], references: [id])
+  anoLetivo  AnoLetivo   @relation(fields: [anoLetivoId], references: [id])
+  matriculas Matricula[]
+
+  @@unique([colegioId, anoLetivoId, nome])
+  @@unique([id, colegioId, anoLetivoId])
+  @@index([colegioId, ativa])
+  @@index([anoLetivoId])
+  @@map("turmas")
+}
+
+model Matricula {
+  id                    String   @id @default(uuid()) @db.Uuid
+  alunoId               String   @map("aluno_id") @db.Uuid
+  colegioId             String   @map("colegio_id") @db.Uuid
+  alunoVinculoColegioId String   @map("aluno_vinculo_colegio_id") @db.Uuid
+  turmaId               String   @map("turma_id") @db.Uuid
+  anoLetivoId           String   @map("ano_letivo_id") @db.Uuid
+  numero                String?
+  ativa                 Boolean  @default(true)
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  aluno               Aluno               @relation(fields: [alunoId], references: [id])
+  colegio             Colegio             @relation(fields: [colegioId], references: [id])
+  alunoVinculoColegio AlunoVinculoColegio @relation(fields: [alunoVinculoColegioId, alunoId, colegioId], references: [id, alunoId, colegioId])
+  turma               Turma               @relation(fields: [turmaId, colegioId, anoLetivoId], references: [id, colegioId, anoLetivoId])
+  anoLetivo           AnoLetivo           @relation(fields: [anoLetivoId, colegioId], references: [id, colegioId])
+
+  @@unique([alunoId, colegioId, anoLetivoId])
+  @@index([colegioId, ativa])
+  @@index([turmaId, anoLetivoId])
+  @@index([anoLetivoId, ativa])
+  @@map("matriculas")
+}
+
+enum StatusVinculoAluno {
+  ATIVO
+  TRANSFERIDO
+  ENCERRADO
+}
+
+// ---------------------------------------------------------------------------
+// Modulo disciplinar - D1: catalogos regulamentares (globais, nao por tenant).
+// Fonte: anexoA.txt (Regras de Negocio - Modulo Disciplinar CPM).
+// ---------------------------------------------------------------------------
+
+enum NaturezaTransgressao {
+  LEVE
+  MEDIA
+  GRAVE
+  ELIMINATORIA
+}
+
+model Transgressao {
+  id        String               @id @default(uuid()) @db.Uuid
+  codigo    String               @unique
+  descricao String
+  natureza  NaturezaTransgressao
+  baseLegal String?              @map("base_legal")
+  ativo     Boolean              @default(true)
+  createdAt DateTime             @default(now()) @map("created_at")
+  updatedAt DateTime             @updatedAt @map("updated_at")
+
+  enquadramentos            EnquadramentoDisciplinar[]
+  ocorrenciasMotivoSugerido Ocorrencia[]               @relation("OcorrenciaMotivoSugerido")
+
+  @@index([natureza, ativo])
+  @@map("transgressoes")
+}
+
+model Atenuante {
+  id        String   @id @default(uuid()) @db.Uuid
+  codigo    String   @unique
+  descricao String
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  decisoes DecisaoAtenuante[]
+
+  @@map("atenuantes")
+}
+
+model Agravante {
+  id        String   @id @default(uuid()) @db.Uuid
+  codigo    String   @unique
+  descricao String
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  decisoes DecisaoAgravante[]
+
+  @@map("agravantes")
+}
+
+model TipoSancao {
+  id              String   @id @default(uuid()) @db.Uuid
+  codigo          String   @unique
+  nome            String
+  ordem           Int      @unique
+  impactoPontos   Decimal  @default(0) @map("impacto_pontos") @db.Decimal(4, 2)
+  geraAfastamento Boolean  @default(false) @map("gera_afastamento")
+  ehDesligamento  Boolean  @default(false) @map("eh_desligamento")
+  ativo           Boolean  @default(true)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("tipos_sancao")
+}
+
+model TipoElogio {
+  id          String   @id @default(uuid()) @db.Uuid
+  codigo      String   @unique
+  nome        String
+  valorPontos Decimal  @default(0) @map("valor_pontos") @db.Decimal(4, 2)
+  ativo       Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  elogios Elogio[]
+
+  @@map("tipos_elogio")
+}
+
+model FaixaComportamento {
+  id                  String   @id @default(uuid()) @db.Uuid
+  codigo              String   @unique
+  nome                String
+  limiteInferior      Decimal  @map("limite_inferior") @db.Decimal(4, 2)
+  limiteSuperior      Decimal  @map("limite_superior") @db.Decimal(4, 2)
+  ordem               Int      @unique
+  exigeAcompanhamento Boolean  @default(false) @map("exige_acompanhamento")
+  ativo               Boolean  @default(true)
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  @@map("faixas_comportamento")
+}
+
+model CompetenciaDisciplinar {
+  id                  String                @id @default(uuid()) @db.Uuid
+  perfilCodigo        String                @map("perfil_codigo")
+  tipoAto             String                @map("tipo_ato")
+  tipoSancaoMaxCodigo String?               @map("tipo_sancao_max_codigo")
+  diasMax             Int?                  @map("dias_max")
+  naturezaMax         NaturezaTransgressao? @map("natureza_max")
+  ativo               Boolean               @default(true)
+  createdAt           DateTime              @default(now()) @map("created_at")
+  updatedAt           DateTime              @updatedAt @map("updated_at")
+
+  @@unique([perfilCodigo, tipoAto])
+  @@map("competencias_disciplinares")
+}
+
+model PrazoProcessual {
+  id         String   @id @default(uuid()) @db.Uuid
+  codigo     String   @unique
+  nome       String
+  quantidade Int
+  unidade    String
+  descricao  String?
+  ativo      Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("prazos_processuais")
+}
+
+// ---------------------------------------------------------------------------
+// Modulo disciplinar - D2: ocorrencia (fato) + processo individual por aluno.
+// anexoA.txt secoes 1, 3, 10, 14: comunicacao registra fato, nao sancao;
+// uma ocorrencia com varios alunos gera N processos individuais.
+// ---------------------------------------------------------------------------
+
+enum TipoOcorrencia {
+  DISCIPLINAR
+  FALTA_ESCOLAR
+  ATRASO_ESCOLAR
+}
+
+enum StatusOcorrencia {
+  RASCUNHO
+  ENVIADA
+  EM_AVERIGUACAO
+  AGUARDANDO_MANIFESTACAO
+  AGUARDANDO_CIENCIA
+  EM_ANALISE
+  DECIDIDA
+  ENCERRADA
+  ARQUIVADA
+}
+
+enum StatusProcessoAluno {
+  PENDENTE
+  JUSTIFICADO
+  PROCEDENTE
+  IMPROCEDENTE
+  ARQUIVADO
+}
+
+model Ocorrencia {
+  id                 String           @id @default(uuid()) @db.Uuid
+  colegioId          String           @map("colegio_id") @db.Uuid
+  comunicanteId      String           @map("comunicante_id") @db.Uuid
+  tipo               TipoOcorrencia   @default(DISCIPLINAR)
+  status             StatusOcorrencia @default(RASCUNHO)
+  numero             String?
+  sequencial         Int?
+  anoNumeracao       Int?             @map("ano_numeracao")
+  dataOcorrencia     DateTime         @map("data_ocorrencia")
+  local              String?
+  // Componente curricular/disciplina escolar durante a qual o fato foi
+  // observado (campo "Disciplinar:" do formulario em papel). Opcional.
+  materia            String?
+  descricao          String
+  // Sugestao do comunicante, escolhida no dropdown de motivos frequentes ao
+  // criar a comunicacao. E so uma dica para quem faz o enquadramento (D4) -
+  // nunca vincula automaticamente nem bloqueia o registro do fato.
+  motivoSugeridoId   String?          @map("motivo_sugerido_id") @db.Uuid
+  sigiloso           Boolean          @default(false)
+  enviadaEm          DateTime?        @map("enviada_em")
+  encerradaEm        DateTime?        @map("encerrada_em")
+  motivoArquivamento String?          @map("motivo_arquivamento")
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
+
+  colegio        Colegio           @relation(fields: [colegioId], references: [id])
+  comunicante    Usuario           @relation(fields: [comunicanteId], references: [id])
+  motivoSugerido Transgressao?     @relation("OcorrenciaMotivoSugerido", fields: [motivoSugeridoId], references: [id])
+  alunos         OcorrenciaAluno[]
+  sindicancias   Sindicancia[]
+  anexos         Anexo[]
+
+  @@unique([colegioId, anoNumeracao, sequencial])
+  @@index([colegioId, status])
+  @@index([comunicanteId])
+  @@index([motivoSugeridoId])
+  @@map("ocorrencias")
+}
+
+model OcorrenciaAluno {
+  id                   String              @id @default(uuid()) @db.Uuid
+  ocorrenciaId         String              @map("ocorrencia_id") @db.Uuid
+  alunoId              String              @map("aluno_id") @db.Uuid
+  ordem                Int
+  numeroProcesso       String?             @map("numero_processo")
+  numeroSequencial     Int?                @map("numero_sequencial")
+  anoNumeracao         Int?                @map("ano_numeracao")
+  status               StatusProcessoAluno @default(PENDENTE)
+  resumo               String?
+  manifestacaoAcolhida Boolean?            @map("manifestacao_acolhida")
+  parecerManifestacao  String?             @map("parecer_manifestacao")
+  avaliadoPorId        String?             @map("avaliado_por_id") @db.Uuid
+  avaliadoEm           DateTime?           @map("avaliado_em")
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime            @updatedAt @map("updated_at")
+
+  ocorrencia      Ocorrencia                 @relation(fields: [ocorrenciaId], references: [id])
+  aluno           Aluno                      @relation(fields: [alunoId], references: [id])
+  avaliadoPor     Usuario?                   @relation("ProcessosAvaliados", fields: [avaliadoPorId], references: [id])
+  manifestacoes   Manifestacao[]
+  ciencias        Ciencia[]
+  enquadramentos  EnquadramentoDisciplinar[]
+  decisoes        Decisao[]
+  sancoes         Sancao[]
+  reconsideracoes Reconsideracao[]
+  afastamentos    AfastamentoCautelar[]
+  conselhos       ConselhoDisciplinar[]
+  anexos          Anexo[]
+  notificacoes    NotificacaoResponsavel[]
+
+  @@unique([ocorrenciaId, alunoId])
+  @@unique([ocorrenciaId, ordem])
+  @@index([alunoId, status])
+  @@map("ocorrencia_alunos")
+}
+
+// ---------------------------------------------------------------------------
+// Modulo disciplinar - D3: manifestacao (append-only) + ciencia formal.
+// anexoA.txt secoes 4 e 11.
+// ---------------------------------------------------------------------------
+
+enum TipoManifestacao {
+  JUSTIFICACAO
+  DEFESA
+  ESCLARECIMENTO
+  COMPLEMENTACAO
+}
+
+enum AlvoCiencia {
+  OCORRENCIA
+  DECISAO
+}
+
+enum MeioCiencia {
+  PORTAL
+  PRESENCIAL
+  TELEFONE
+  RECUSA
+}
+
+model Manifestacao {
+  id                String           @id @default(uuid()) @db.Uuid
+  ocorrenciaAlunoId String           @map("ocorrencia_aluno_id") @db.Uuid
+  tipo              TipoManifestacao @default(JUSTIFICACAO)
+  texto             String
+  viaPresencial     Boolean          @default(false) @map("via_presencial")
+  autorId           String           @map("autor_id") @db.Uuid
+  registradoPorId   String           @map("registrado_por_id") @db.Uuid
+  createdAt         DateTime         @default(now()) @map("created_at")
+
+  ocorrenciaAluno OcorrenciaAluno @relation(fields: [ocorrenciaAlunoId], references: [id])
+  autor           Usuario         @relation("ManifestacoesAutor", fields: [autorId], references: [id])
+  registradoPor   Usuario         @relation("ManifestacoesRegistradas", fields: [registradoPorId], references: [id])
+  anexos          Anexo[]
+
+  @@index([ocorrenciaAlunoId, createdAt])
+  @@map("manifestacoes")
+}
+
+model Ciencia {
+  id                String      @id @default(uuid()) @db.Uuid
+  ocorrenciaAlunoId String      @map("ocorrencia_aluno_id") @db.Uuid
+  sobre             AlvoCiencia @default(OCORRENCIA)
+  meio              MeioCiencia @default(PORTAL)
+  observacao        String?
+  confirmadaPorId   String      @map("confirmada_por_id") @db.Uuid
+  createdAt         DateTime    @default(now()) @map("created_at")
+
+  ocorrenciaAluno OcorrenciaAluno @relation(fields: [ocorrenciaAlunoId], references: [id])
+  confirmadaPor   Usuario         @relation("CienciasConfirmadas", fields: [confirmadaPorId], references: [id])
+
+  @@unique([ocorrenciaAlunoId, sobre])
+  @@map("ciencias")
+}
+
+// ---------------------------------------------------------------------------
+// Modulo disciplinar - D4: enquadramento (analise) + decisao da autoridade.
+// anexoA.txt secoes 2, 4, 5, 7. Nada e apagado (secao 15): retificar =
+// revogar o registro anterior (revogado_em) e criar um novo.
+// ---------------------------------------------------------------------------
+
+enum ResultadoDecisao {
+  PROCEDENTE
+  IMPROCEDENTE
+  ARQUIVADO
+  ENCAMINHADO_SINDICANCIA
+}
+
+model EnquadramentoDisciplinar {
+  id                String               @id @default(uuid()) @db.Uuid
+  ocorrenciaAlunoId String               @map("ocorrencia_aluno_id") @db.Uuid
+  transgressaoId    String               @map("transgressao_id") @db.Uuid
+  natureza          NaturezaTransgressao
+  fundamentacao     String?
+  registradoPorId   String               @map("registrado_por_id") @db.Uuid
+  revogadoEm        DateTime?            @map("revogado_em")
+  revogadoPorId     String?              @map("revogado_por_id") @db.Uuid
+  createdAt         DateTime             @default(now()) @map("created_at")
+
+  ocorrenciaAluno OcorrenciaAluno @relation(fields: [ocorrenciaAlunoId], references: [id])
+  transgressao    Transgressao    @relation(fields: [transgressaoId], references: [id])
+  registradoPor   Usuario         @relation("EnquadramentosRegistrados", fields: [registradoPorId], references: [id])
+  revogadoPor     Usuario?        @relation("EnquadramentosRevogados", fields: [revogadoPorId], references: [id])
+
+  @@index([ocorrenciaAlunoId, revogadoEm])
+  @@map("enquadramentos_disciplinares")
+}
+
+model Decisao {
+  id                      String                @id @default(uuid()) @db.Uuid
+  ocorrenciaAlunoId       String                @map("ocorrencia_aluno_id") @db.Uuid
+  resultado               ResultadoDecisao
+  naturezaApurada         NaturezaTransgressao? @map("natureza_apurada")
+  sancaoTipoCodigo        String?               @map("sancao_tipo_codigo")
+  diasSancao              Int?                  @map("dias_sancao")
+  fundamentacao           String
+  decididoPorId           String                @map("decidido_por_id") @db.Uuid
+  decididoPorPerfilCodigo String                @map("decidido_por_perfil_codigo")
+  numero                  String?
+  sequencial              Int?
+  anoNumeracao            Int?                  @map("ano_numeracao")
+  revogadoEm              DateTime?             @map("revogado_em")
+  revogadoPorId           String?               @map("revogado_por_id") @db.Uuid
+  createdAt               DateTime              @default(now()) @map("created_at")
+
+  ocorrenciaAluno OcorrenciaAluno    @relation(fields: [ocorrenciaAlunoId], references: [id])
+  decididoPor     Usuario            @relation("DecisoesTomadas", fields: [decididoPorId], references: [id])
+  revogadoPor     Usuario?           @relation("DecisoesRevogadas", fields: [revogadoPorId], references: [id])
+  atenuantes      DecisaoAtenuante[]
+  agravantes      DecisaoAgravante[]
+  sancoes         Sancao[]
+
+  @@unique([ocorrenciaAlunoId, anoNumeracao, sequencial])
+  @@index([ocorrenciaAlunoId, revogadoEm])
+  @@map("decisoes")
+}
+
+model DecisaoAtenuante {
+  decisaoId   String @map("decisao_id") @db.Uuid
+  atenuanteId String @map("atenuante_id") @db.Uuid
+
+  decisao   Decisao   @relation(fields: [decisaoId], references: [id])
+  atenuante Atenuante @relation(fields: [atenuanteId], references: [id])
+
+  @@id([decisaoId, atenuanteId])
+  @@map("decisao_atenuantes")
+}
+
+model DecisaoAgravante {
+  decisaoId   String @map("decisao_id") @db.Uuid
+  agravanteId String @map("agravante_id") @db.Uuid
+
+  decisao   Decisao   @relation(fields: [decisaoId], references: [id])
+  agravante Agravante @relation(fields: [agravanteId], references: [id])
+
+  @@id([decisaoId, agravanteId])
+  @@map("decisao_agravantes")
+}
+
+// ---------------------------------------------------------------------------
+// Modulo disciplinar - D5: sancao + modificacoes. D6-nucleo: ledger imutavel
+// de movimentos de pontuacao (anexoA.txt secoes 6, 7, 8, 9, 15).
+// A pontuacao NUNCA e guardada como valor unico: e a soma do ledger.
+// ---------------------------------------------------------------------------
+
+enum StatusSancao {
+  ATIVA
+  SUSPENSA
+  ANULADA
+  CUMPRIDA
+}
+
+enum TipoModificacaoSancao {
+  ANULACAO
+  SUSPENSAO_EFEITOS
+  RETOMADA_EFEITOS
+  CUMPRIMENTO
+}
+
+enum TipoMovimentoPontuacao {
+  SANCAO
+  ELOGIO
+  RESTAURACAO_SANCAO
+  BONIFICACAO_ANUAL
+  AJUSTE_ADMINISTRATIVO
+}
+
+model Sancao {
+  id                String       @id @default(uuid()) @db.Uuid
+  ocorrenciaAlunoId String       @map("ocorrencia_aluno_id") @db.Uuid
+  decisaoId         String       @map("decisao_id") @db.Uuid
+  tipoSancaoCodigo  String       @map("tipo_sancao_codigo")
+  dias              Int?
+  impactoPontos     Decimal      @map("impacto_pontos") @db.Decimal(4, 2)
+  // true quando impactoPontos foi digitado manualmente (aluno com
+  // necessidadeEspecial) em vez de copiado do catalogo TipoSancao.impactoPontos.
+  impactoManual     Boolean      @default(false) @map("impacto_manual")
+  status            StatusSancao @default(ATIVA)
+  numeroPublicacao  String?      @map("numero_publicacao")
+  sequencial        Int?
+  anoNumeracao      Int?         @map("ano_numeracao")
+  observacao        String?
+  aplicadaPorId     String       @map("aplicada_por_id") @db.Uuid
+  aplicadaEm        DateTime     @default(now()) @map("aplicada_em")
+  cumpridaEm        DateTime?    @map("cumprida_em")
+  createdAt         DateTime     @default(now()) @map("created_at")
+
+  ocorrenciaAluno OcorrenciaAluno     @relation(fields: [ocorrenciaAlunoId], references: [id])
+  decisao         Decisao             @relation(fields: [decisaoId], references: [id])
+  aplicadaPor     Usuario             @relation("SancoesAplicadas", fields: [aplicadaPorId], references: [id])
+  modificacoes    ModificacaoSancao[]
+  reconsideracoes Reconsideracao[]
+
+  @@index([ocorrenciaAlunoId])
+  @@index([decisaoId])
+  @@map("sancoes")
+}
+
+model ModificacaoSancao {
+  id              String                @id @default(uuid()) @db.Uuid
+  sancaoId        String                @map("sancao_id") @db.Uuid
+  tipo            TipoModificacaoSancao
+  motivo          String
+  registradoPorId String                @map("registrado_por_id") @db.Uuid
+  createdAt       DateTime              @default(now()) @map("created_at")
+
+  sancao        Sancao  @relation(fields: [sancaoId], references: [id])
+  registradoPor Usuario @relation("ModificacoesSancaoRegistradas", fields: [registradoPorId], references: [id])
+
+  @@index([sancaoId, createdAt])
+  @@map("modificacoes_sancao")
+}
+
+model MovimentoPontuacao {
+  id              String                 @id @default(uuid()) @db.Uuid
+  alunoId         String                 @map("aluno_id") @db.Uuid
+  colegioId       String                 @map("colegio_id") @db.Uuid
+  tipo            TipoMovimentoPontuacao
+  valor           Decimal                @db.Decimal(5, 2)
+  origemTipo      String?                @map("origem_tipo")
+  origemId        String?                @map("origem_id")
+  descricao       String
+  registradoPorId String                 @map("registrado_por_id") @db.Uuid
+  efetivadoEm     DateTime               @default(now()) @map("efetivado_em")
+  createdAt       DateTime               @default(now()) @map("created_at")
+
+  aluno         Aluno   @relation(fields: [alunoId], references: [id])
+  colegio       Colegio @relation(fields: [colegioId], references: [id])
+  registradoPor Usuario @relation("MovimentosRegistrados", fields: [registradoPorId], references: [id])
+
+  @@index([alunoId, colegioId, efetivadoEm])
+  @@index([origemTipo, origemId])
+  @@map("movimentos_pontuacao")
+}
+
+model Elogio {
+  id               String   @id @default(uuid()) @db.Uuid
+  alunoId          String   @map("aluno_id") @db.Uuid
+  colegioId        String   @map("colegio_id") @db.Uuid
+  tipoElogioCodigo String   @map("tipo_elogio_codigo")
+  valorPontos      Decimal  @map("valor_pontos") @db.Decimal(4, 2)
+  descricao        String
+  registradoPorId  String   @map("registrado_por_id") @db.Uuid
+  concedidoEm      DateTime @default(now()) @map("concedido_em")
+  // Numeracao oficial do documento impresso (mesmo mecanismo atomico das
+  // ocorrencias). Cada elogio ja e um-por-aluno nos dados, entao aqui nao ha
+  // o problema de agrupamento que a comunicacao tinha.
+  numero           String?
+  sequencial       Int?
+  anoNumeracao     Int?     @map("ano_numeracao")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  aluno         Aluno      @relation(fields: [alunoId], references: [id])
+  colegio       Colegio    @relation(fields: [colegioId], references: [id])
+  tipoElogio    TipoElogio @relation(fields: [tipoElogioCodigo], references: [codigo])
+  registradoPor Usuario    @relation("ElogiosRegistrados", fields: [registradoPorId], references: [id])
+
+  @@unique([colegioId, anoNumeracao, sequencial])
+  @@index([alunoId, colegioId, concedidoEm])
+  @@map("elogios")
+}
+
+// ---------------------------------------------------------------------------
+// Modulo disciplinar - D7: pedido de reconsideracao (anexoA.txt secao 12).
+// Prazo de 15 dias corridos apos a ciencia/publicacao; enquanto pendente os
+// efeitos da sancao ficam suspensos; a decisao do recurso nao agrava a sancao.
+// ---------------------------------------------------------------------------
+
+enum StatusReconsideracao {
+  PENDENTE
+  DEFERIDA
+  INDEFERIDA
+  ENCERRADA
+}
+
+model Reconsideracao {
+  id                      String               @id @default(uuid()) @db.Uuid
+  sancaoId                String               @map("sancao_id") @db.Uuid
+  ocorrenciaAlunoId       String               @map("ocorrencia_aluno_id") @db.Uuid
+  solicitanteId           String               @map("solicitante_id") @db.Uuid
+  texto                   String
+  status                  StatusReconsideracao @default(PENDENTE)
+  prazoFinal              DateTime             @map("prazo_final")
+  parecerDecisao          String?              @map("parecer_decisao")
+  decididoPorId           String?              @map("decidido_por_id") @db.Uuid
+  decididoPorPerfilCodigo String?              @map("decidido_por_perfil_codigo")
+  decididaEm              DateTime?            @map("decidida_em")
+  novoTipoSancaoCodigo    String?              @map("novo_tipo_sancao_codigo")
+  novosDias               Int?                 @map("novos_dias")
+  numero                  String?
+  sequencial              Int?
+  anoNumeracao            Int?                 @map("ano_numeracao")
+  createdAt               DateTime             @default(now()) @map("created_at")
+
+  sancao          Sancao          @relation(fields: [sancaoId], references: [id])
+  ocorrenciaAluno OcorrenciaAluno @relation(fields: [ocorrenciaAlunoId], references: [id])
+  solicitante     Usuario         @relation("ReconsideracoesSolicitadas", fields: [solicitanteId], references: [id])
+  decididoPor     Usuario?        @relation("ReconsideracoesDecididas", fields: [decididoPorId], references: [id])
+
+  @@index([ocorrenciaAlunoId])
+  @@index([sancaoId, status])
+  @@map("reconsideracoes")
+}
+
+// ---------------------------------------------------------------------------
+// Modulo disciplinar - D8: afastamento cautelar (anexoA.txt secao 13 - NAO e
+// sancao), sindicancia e conselho disciplinar (ritos preliminares/colegiados).
+// ---------------------------------------------------------------------------
+
+enum StatusAfastamento {
+  ATIVO
+  PRORROGADO
+  ENCERRADO
+  REVOGADO
+}
+
+enum StatusSindicancia {
+  INSTAURADA
+  EM_ANDAMENTO
+  CONCLUIDA
+  ARQUIVADA
+}
+
+enum StatusConselho {
+  INSTAURADO
+  EM_SESSAO
+  CONCLUIDO
+}
+
+model AfastamentoCautelar {
+  id                 String            @id @default(uuid()) @db.Uuid
+  ocorrenciaAlunoId  String            @map("ocorrencia_aluno_id") @db.Uuid
+  colegioId          String            @map("colegio_id") @db.Uuid
+  justificativa      String
+  diasIniciais       Int               @default(5) @map("dias_iniciais")
+  inicioEm           DateTime          @map("inicio_em")
+  fimPrevisto        DateTime          @map("fim_previsto")
+  status             StatusAfastamento @default(ATIVO)
+  prorrogadoEm       DateTime?         @map("prorrogado_em")
+  fimProrrogado      DateTime?         @map("fim_prorrogado")
+  encerradoEm        DateTime?         @map("encerrado_em")
+  motivoEncerramento String?           @map("motivo_encerramento")
+  determinadoPorId   String            @map("determinado_por_id") @db.Uuid
+  createdAt          DateTime          @default(now()) @map("created_at")
+
+  ocorrenciaAluno OcorrenciaAluno @relation(fields: [ocorrenciaAlunoId], references: [id])
+  colegio         Colegio         @relation(fields: [colegioId], references: [id])
+  determinadoPor  Usuario         @relation("AfastamentosDeterminados", fields: [determinadoPorId], references: [id])
+
+  @@index([ocorrenciaAlunoId])
+  @@index([colegioId, status])
+  @@map("afastamentos_cautelares")
+}
+
+model Sindicancia {
+  id              String            @id @default(uuid()) @db.Uuid
+  ocorrenciaId    String            @map("ocorrencia_id") @db.Uuid
+  colegioId       String            @map("colegio_id") @db.Uuid
+  numero          String?
+  sequencial      Int?
+  anoNumeracao    Int?              @map("ano_numeracao")
+  objeto          String
+  status          StatusSindicancia @default(INSTAURADA)
+  conclusao       String?
+  concluidaEm     DateTime?         @map("concluida_em")
+  sindicanteId    String            @map("sindicante_id") @db.Uuid
+  instauradaPorId String            @map("instaurada_por_id") @db.Uuid
+  createdAt       DateTime          @default(now()) @map("created_at")
+
+  ocorrencia    Ocorrencia @relation(fields: [ocorrenciaId], references: [id])
+  colegio       Colegio    @relation(fields: [colegioId], references: [id])
+  sindicante    Usuario    @relation("SindicanciasConduzidas", fields: [sindicanteId], references: [id])
+  instauradaPor Usuario    @relation("SindicanciasInstauradas", fields: [instauradaPorId], references: [id])
+
+  @@index([ocorrenciaId])
+  @@index([colegioId, status])
+  @@map("sindicancias")
+}
+
+model ConselhoDisciplinar {
+  id                String         @id @default(uuid()) @db.Uuid
+  ocorrenciaAlunoId String         @map("ocorrencia_aluno_id") @db.Uuid
+  colegioId         String         @map("colegio_id") @db.Uuid
+  numero            String?
+  sequencial        Int?
+  anoNumeracao      Int?           @map("ano_numeracao")
+  objeto            String
+  status            StatusConselho @default(INSTAURADO)
+  parecer           String?
+  recomendacao      String?
+  votosFavor        Int?           @map("votos_favor")
+  votosContra       Int?           @map("votos_contra")
+  concluidoEm       DateTime?      @map("concluido_em")
+  presididoPorId    String         @map("presidido_por_id") @db.Uuid
+  instauradoPorId   String         @map("instaurado_por_id") @db.Uuid
+  createdAt         DateTime       @default(now()) @map("created_at")
+
+  ocorrenciaAluno OcorrenciaAluno @relation(fields: [ocorrenciaAlunoId], references: [id])
+  colegio         Colegio         @relation(fields: [colegioId], references: [id])
+  presididoPor    Usuario         @relation("ConselhosPresididos", fields: [presididoPorId], references: [id])
+  instauradoPor   Usuario         @relation("ConselhosInstaurados", fields: [instauradoPorId], references: [id])
+
+  @@index([ocorrenciaAlunoId])
+  @@index([colegioId, status])
+  @@map("conselhos_disciplinares")
+}
+
+// ---------------------------------------------------------------------------
+// Modulo disciplinar - D9: Ficha Disciplinar (FAD) - snapshot versionado e
+// imutavel, com hash, reconstruivel a partir do historico (anexoA.txt secao 15).
+// ---------------------------------------------------------------------------
+
+model FichaDisciplinar {
+  id          String   @id @default(uuid()) @db.Uuid
+  alunoId     String   @map("aluno_id") @db.Uuid
+  colegioId   String   @map("colegio_id") @db.Uuid
+  versao      Int
+  conteudo    Json
+  hash        String
+  geradoPorId String   @map("gerado_por_id") @db.Uuid
+  geradoEm    DateTime @default(now()) @map("gerado_em")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  aluno     Aluno   @relation(fields: [alunoId], references: [id])
+  colegio   Colegio @relation(fields: [colegioId], references: [id])
+  geradoPor Usuario @relation("FichasGeradas", fields: [geradoPorId], references: [id])
+
+  @@unique([alunoId, colegioId, versao])
+  @@index([colegioId, geradoEm])
+  @@map("fichas_disciplinares")
+}
+
+// ---------------------------------------------------------------------------
+// Modulo disciplinar - D10: anexos em object storage (Supabase Storage).
+// O binario fica no bucket; aqui guardamos so os metadados + o caminho.
+// ---------------------------------------------------------------------------
+
+enum CategoriaAnexo {
+  COMUNICACAO
+  MANIFESTACAO
+  DECISAO
+  SANCAO
+  RECONSIDERACAO
+  SINDICANCIA
+  CONSELHO
+  FAD
+  OUTRO
+}
+
+enum OrigemAnexo {
+  UPLOAD
+  GERADO
+}
+
+model Anexo {
+  id                String         @id @default(uuid()) @db.Uuid
+  colegioId         String         @map("colegio_id") @db.Uuid
+  ocorrenciaId      String?        @map("ocorrencia_id") @db.Uuid
+  ocorrenciaAlunoId String?        @map("ocorrencia_aluno_id") @db.Uuid
+  manifestacaoId    String?        @map("manifestacao_id") @db.Uuid
+  categoria         CategoriaAnexo @default(OUTRO)
+  origem            OrigemAnexo    @default(UPLOAD)
+  nomeArquivo       String         @map("nome_arquivo")
+  contentType       String         @map("content_type")
+  tamanhoBytes      Int            @map("tamanho_bytes")
+  storagePath       String         @unique @map("storage_path")
+  hash              String?
+  removidoEm        DateTime?      @map("removido_em")
+  enviadoPorId      String         @map("enviado_por_id") @db.Uuid
+  createdAt         DateTime       @default(now()) @map("created_at")
+
+  colegio         Colegio          @relation(fields: [colegioId], references: [id])
+  ocorrencia      Ocorrencia?      @relation(fields: [ocorrenciaId], references: [id])
+  ocorrenciaAluno OcorrenciaAluno? @relation(fields: [ocorrenciaAlunoId], references: [id])
+  manifestacao    Manifestacao?    @relation(fields: [manifestacaoId], references: [id])
+  enviadoPor      Usuario          @relation("AnexosEnviados", fields: [enviadoPorId], references: [id])
+
+  @@index([colegioId, createdAt])
+  @@index([ocorrenciaId])
+  @@index([ocorrenciaAlunoId])
+  @@map("anexos")
+}
+
+// ---------------------------------------------------------------------------
+// Numeracao oficial concorrente-segura. Uma linha por (colegio, escopo, ano);
+// a alocacao usa INSERT ... ON CONFLICT DO UPDATE ... RETURNING, que serializa
+// no lock da linha - dois envios simultaneos nunca recebem o mesmo numero.
+// escopo: OCORRENCIA | DECISAO | SANCAO | SINDICANCIA | CONSELHO | RECONSIDERACAO
+// ---------------------------------------------------------------------------
+
+model SequenciaNumeracao {
+  colegioId String   @map("colegio_id") @db.Uuid
+  escopo    String
+  ano       Int
+  valor     Int      @default(0)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  colegio Colegio @relation(fields: [colegioId], references: [id])
+
+  @@id([colegioId, escopo, ano])
+  @@map("sequencias_numeracao")
+}
+
+// ---------------------------------------------------------------------------
+// Melhorias pos-D10: notificacoes do portal do responsavel. Nunca deleta -
+// "lida" so marca lidoEm, mesmo padrao de SolicitacaoSenhaResponsavel.
+// COMUNICACAO_DISCIPLINAR nasce automaticamente do envio de uma ocorrencia;
+// AVISO_ESCOLA e enviado manualmente, um responsavel por vez.
+// ---------------------------------------------------------------------------
+
+enum TipoNotificacaoResponsavel {
+  COMUNICACAO_DISCIPLINAR
+  AVISO_ESCOLA
+}
+
+model NotificacaoResponsavel {
+  id                String                     @id @default(uuid()) @db.Uuid
+  responsavelId     String                     @map("responsavel_id") @db.Uuid
+  colegioId         String                     @map("colegio_id") @db.Uuid
+  tipo              TipoNotificacaoResponsavel
+  ocorrenciaAlunoId String?                    @map("ocorrencia_aluno_id") @db.Uuid
+  titulo            String
+  mensagem          String
+  criadoPorId       String?                    @map("criado_por_id") @db.Uuid
+  criadoEm          DateTime                   @default(now()) @map("criado_em")
+  lidoEm            DateTime?                  @map("lido_em")
+
+  responsavel     Responsavel      @relation(fields: [responsavelId], references: [id])
+  colegio         Colegio          @relation(fields: [colegioId], references: [id])
+  ocorrenciaAluno OcorrenciaAluno? @relation(fields: [ocorrenciaAlunoId], references: [id])
+  criadoPor       Usuario?         @relation("NotificacoesResponsavelCriadas", fields: [criadoPorId], references: [id])
+
+  @@index([responsavelId, lidoEm])
+  @@index([colegioId, criadoEm])
+  @@map("notificacoes_responsavel")
+}

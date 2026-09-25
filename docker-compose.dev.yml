@@ -1,0 +1,44 @@
+# Compose de DESENVOLVIMENTO LOCAL (opcional). So o Postgres local -- hoje o
+# projeto usa o Supabase (cpm/cpm_test) por padrao; isso aqui e alternativa
+# para quem preferir rodar sem depender de rede. Use:
+#   npm run db:test:up   (sobe so o db-test, usado por test:integration)
+#   docker compose -f docker-compose.dev.yml up -d db
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: cpm-disciplinar-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: cpm
+      POSTGRES_PASSWORD: cpm_dev_password
+      POSTGRES_DB: cpm_disciplinar
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cpm -d cpm_disciplinar"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  db-test:
+    image: postgres:16-alpine
+    container_name: cpm-disciplinar-db-test
+    restart: "no"
+    environment:
+      POSTGRES_USER: cpm
+      POSTGRES_PASSWORD: cpm_dev_password
+      POSTGRES_DB: cpm_disciplinar_test
+    ports:
+      - "5435:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cpm -d cpm_disciplinar_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
