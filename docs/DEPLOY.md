@@ -3,6 +3,14 @@
 O banco de dados (Postgres + Storage de anexos) já roda no Supabase, fora
 deste deploy. Este documento cobre só a aplicação Next.js.
 
+Repositório: https://github.com/FabioNilo/cpmprojeto (privado). Deploy via
+EasyPanel a partir deste repo Git, branch `main`.
+
+**Decisão da fase beta (2026-09-25)**: o app em produção/beta aponta para o
+schema `cpm` do Supabase (dados reais dos ~1220 alunos do CPM Rômulo Galvão,
+já importados) — não um schema isolado. Ou seja, a fase beta já é uso real,
+não um ambiente de testes com dados fictícios.
+
 ## 1. Pré-requisitos já resolvidos
 
 - `Dockerfile` (multi-stage: `deps` → `builder` → `runner`, Next.js
@@ -55,11 +63,16 @@ antes do rollout, para não correr `migrate deploy` em paralelo.
 
 ## 5. Checklist antes de ir ao ar
 
-- [ ] Rotacionar a senha do banco Supabase e o JWT secret/API keys (foram
-      expostos em uma conversa anterior).
-- [ ] `SESSION_SECRET` de produção gerado do zero (não reaproveitar o de dev).
-- [ ] `.env` real nunca commitado (`.dockerignore` e `.gitignore` já cobrem).
-- [ ] Decidir se o schema `cpm` atual (já com dados reais do CPM Rômulo
-      Galvão) é o banco de produção ou se um novo será usado.
+- [ ] Rotacionar a senha do banco Supabase e o JWT secret/API keys, se ainda
+      não foi feito (foram expostos em uma conversa anterior).
+- [ ] `SESSION_SECRET` de produção gerado do zero (não reaproveitar o de dev;
+      gerar direto no terminal, nunca colar um valor pronto no chat/histórico
+      — ex.: `openssl rand -base64 32`).
+- [ ] `.env` real nunca commitado (`.dockerignore` e `.gitignore` já cobrem;
+      confirmado no `git status` antes do primeiro push).
+- [x] Decidido (2026-09-25): schema `cpm` (dados reais) é o banco do beta.
 - [ ] Rodar `npm run test:integration` contra `cpm_test` antes do primeiro
       deploy grande.
+- [ ] Confirmar que o domínio escolhido para o beta tem DNS (registro A)
+      apontando para o IP da VPS antes de pedir o certificado HTTPS no
+      EasyPanel (ele usa Let's Encrypt, que valida o domínio por HTTP).
