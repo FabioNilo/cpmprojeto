@@ -16,17 +16,21 @@ não um ambiente de testes com dados fictícios.
 - `Dockerfile` (multi-stage: `deps` → `builder` → `runner`, Next.js
   `output: "standalone"`) e `docker-entrypoint.sh` (roda
   `prisma migrate deploy` antes de subir o servidor) prontos no repositório.
-- `docker-compose.yml` na raiz é o compose de **produção**: um único serviço
-  `app`, sem banco local (usa o Supabase via `DATABASE_URL`).
 - `binaryTargets` do Prisma (`prisma/schema.prisma`) já inclui
   `linux-musl-openssl-3.0.x`, o alvo do Alpine — não precisa mexer.
 - Bucket de anexos `anexos-disciplina` já existe no Supabase Storage
   (privado, limite 10 MB, mimetypes documentados/PDF/imagem/Word/texto).
 
+**Nota (2026-09-25)**: o `docker-compose.yml` da raiz existe só para deploy
+via serviço do tipo **Compose** do EasyPanel. Como este projeto é um único
+container sem banco local, é mais simples usar um serviço do tipo **App**
+com builder **Dockerfile** direto — é o método usado abaixo. O
+`docker-compose.yml` fica no repo como alternativa, não é obrigatório.
+
 ## 2. Variáveis de ambiente a cadastrar no EasyPanel
 
-No app criado a partir deste `docker-compose.yml`, aba **Environment**,
-cadastre (nunca versione valores reais no repositório):
+No serviço App, aba **Environment** (formato `.env`, uma linha
+`CHAVE=valor` por variável — nunca versione valores reais no repositório):
 
 | Variável | Valor |
 |---|---|
@@ -38,20 +42,19 @@ cadastre (nunca versione valores reais no repositório):
 | `SUPABASE_SERVICE_ROLE_KEY` | a chave `service_role` (Project Settings → API) |
 | `SUPABASE_STORAGE_BUCKET` | `anexos-disciplina` |
 
-O `docker-compose.yml` só referencia `${VAR}` — o EasyPanel injeta os
-valores no container a partir dessa aba antes de interpolar o compose.
-
 ## 3. Deploy
 
-1. No EasyPanel, criar o app a partir deste repositório Git, método
-   **Docker Compose** (usa o `docker-compose.yml` da raiz).
-2. Preencher as variáveis da tabela acima.
-3. Configurar a porta do serviço `app` como **3000** (é o que o container
-   expõe) e o domínio/HTTPS pelo próprio EasyPanel.
-4. Disparar o deploy. No primeiro start, o `docker-entrypoint.sh` roda
+1. No EasyPanel: **+ Create Service → App**, nome do serviço, criar.
+2. Na aba **Source**: escolher **GitHub**, repositório
+   `FabioNilo/cpmprojeto`, branch `main`, build path `/`.
+3. Na aba **Build**: builder **Dockerfile**, caminho `Dockerfile` (raiz).
+4. Na aba **Environment**: colar as variáveis da tabela acima.
+5. Na aba **Domains**: porta interna **3000**, domínio do beta (DNS já
+   apontando pro IP da VPS) — o EasyPanel emite o certificado HTTPS.
+6. **Deploy**. No primeiro start, o `docker-entrypoint.sh` roda
    `prisma migrate deploy` (idempotente — só aplica o que falta) e então
    inicia `node server.js`.
-5. Conferir o healthcheck (`GET /login`) e os logs do container.
+7. Conferir os logs do container e o healthcheck (`GET /login`).
 
 ## 4. Migrations em deploys seguintes
 
