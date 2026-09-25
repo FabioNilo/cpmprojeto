@@ -74,8 +74,27 @@ antes do rollout, para não correr `migrate deploy` em paralelo.
 - [ ] `.env` real nunca commitado (`.dockerignore` e `.gitignore` já cobrem;
       confirmado no `git status` antes do primeiro push).
 - [x] Decidido (2026-09-25): schema `cpm` (dados reais) é o banco do beta.
-- [ ] Rodar `npm run test:integration` contra `cpm_test` antes do primeiro
-      deploy grande.
-- [ ] Confirmar que o domínio escolhido para o beta tem DNS (registro A)
+- [x] `npm run test:integration` rodado contra `cpm_test` (7 arquivos/16
+      testes verdes, 2026-09-25).
+- [x] Confirmar que o domínio escolhido para o beta tem DNS (registro A)
       apontando para o IP da VPS antes de pedir o certificado HTTPS no
       EasyPanel (ele usa Let's Encrypt, que valida o domínio por HTTP).
+
+## 6. Primeiro deploy (2026-09-25) — feito, app no ar
+
+Serviço tipo **App** no EasyPanel (não Compose — ver nota na seção 1),
+builder Dockerfile, repositório `FabioNilo/cpmprojeto`. Dois problemas
+apareceram e foram corrigidos:
+
+- Build da imagem falhava com `Environment variable not found:
+  DATABASE_URL` — `prisma generate` roda durante o build (que não tem acesso
+  às variáveis da aba Environment, só disponíveis em runtime) e exige a env
+  var presente para validar o schema, mesmo sem conectar no banco de
+  verdade. Fix: `ENV DATABASE_URL` com valor fake só na etapa `builder` do
+  `Dockerfile` (commit `cec33c8`) — não vaza pra imagem final.
+- Depois do fix de build, o mesmo erro voltou em **runtime** (no
+  `prisma migrate deploy` do `docker-entrypoint.sh`) — causa era um typo do
+  usuário na aba Environment (faltava o "D" de `DATABASE_URL`). Corrigido
+  direto no painel, sem mudança de código.
+
+App confirmado no ar.
