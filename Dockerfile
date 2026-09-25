@@ -12,6 +12,12 @@ FROM node:22-alpine AS builder
 RUN apk add --no-cache openssl
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
+# "prisma generate" (chamado abaixo e de novo dentro de "npm run build")
+# so LE o schema.prisma, nunca conecta no banco - mas exige que a env var
+# do datasource exista, senao falha na validacao. As credenciais reais so
+# existem em runtime (aba Environment do EasyPanel); aqui e so um valor
+# fake, descartado ao fim desta etapa (nao vai para a imagem final/runner).
+ENV DATABASE_URL="postgresql://build:build@localhost:5432/build?schema=public"
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # "prisma generate" roda aqui dentro do Alpine: o binary target musl fica
