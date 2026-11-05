@@ -41,11 +41,3 @@ export const toggleResponsavelAccessSchema = z.object({
   id: z.string().uuid(),
   ativo: z.enum(["true", "false"]).transform((value) => value === "true"),
 });
-
-export const regenerarSenhaResponsavelSchema = z.object({
-  id: z.string().uuid(),
-});
-
-export const atenderSolicitacaoSenhaSchema = z.object({
-  id: z.string().uuid(),
-});

@@ -4,9 +4,8 @@ import { DataTable, type Column } from "@/components/ui/data-table";
 import { PERMISSIONS } from "@/modules/rbac/permissions";
 import { requirePermission } from "@/modules/rbac/services/rbac-service";
 import { EnviarAvisoForm } from "@/modules/notificacoes/components/enviar-aviso-form";
-import { AtenderSolicitacaoSenhaForm } from "@/modules/responsaveis/components/atender-solicitacao-senha-form";
+import { GerarLinkTemporarioForm } from "@/modules/auth/components/gerar-link-temporario-form";
 import { CreateResponsavelForm } from "@/modules/responsaveis/components/create-responsavel-form";
-import { RegenerarSenhaForm } from "@/modules/responsaveis/components/regenerar-senha-form";
 import { ToggleResponsavelAccessForm } from "@/modules/responsaveis/components/toggle-responsavel-access-form";
 import { UpdateResponsavelForm } from "@/modules/responsaveis/components/update-responsavel-form";
 import { listResponsaveisByColegio } from "@/modules/responsaveis/queries/list-responsaveis";
@@ -78,7 +77,12 @@ export default async function ResponsaveisPage() {
             ativo={Boolean(responsavel.usuario.colegios[0]?.ativo)}
             id={responsavel.id}
           />
-          <RegenerarSenhaForm id={responsavel.id} />
+          {responsavel.usuario.colegios[0]?.ativo ? (
+            <GerarLinkTemporarioForm
+              origem="RESPONSAVEL"
+              usuarioId={responsavel.usuario.id}
+            />
+          ) : null}
           <EnviarAvisoForm responsavelId={responsavel.id} />
           <UpdateResponsavelForm
             cpf={responsavel.usuario.cpf}
@@ -105,8 +109,8 @@ export default async function ResponsaveisPage() {
             Solicitações de nova senha ({solicitacoesPendentes.length})
           </h2>
           <p className="mb-3 text-xs text-amber-800">
-            Responsável sem e-mail cadastrado não recupera senha sozinho.
-            Gere uma senha provisória e repasse por telefone.
+            Gere um link temporário e envie à própria pessoa por WhatsApp ou
+            outro contato direto. O pedido é marcado como atendido ao gerar.
           </p>
           <ul className="space-y-2">
             {solicitacoesPendentes.map((s) => (
@@ -132,7 +136,10 @@ export default async function ResponsaveisPage() {
                     : ""}
                 </p>
                 <div className="mt-2">
-                  <AtenderSolicitacaoSenhaForm id={s.id} />
+                  <GerarLinkTemporarioForm
+                    origem="RESPONSAVEL"
+                    usuarioId={s.usuario.id}
+                  />
                 </div>
               </li>
             ))}

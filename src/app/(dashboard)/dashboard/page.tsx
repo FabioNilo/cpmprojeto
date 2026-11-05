@@ -2,8 +2,12 @@ import Link from "next/link";
 
 import { AdminPage } from "@/components/layout/admin-page";
 import { prisma } from "@/db/prisma";
-import { PERMISSIONS } from "@/modules/rbac/permissions";
+import { PERMISSIONS, ROLE_CODES } from "@/modules/rbac/permissions";
 import { requirePermission } from "@/modules/rbac/services/rbac-service";
+import {
+  contarSolicitacoesSenhaEquipe,
+  contarSolicitacoesSenhaPendentes,
+} from "@/modules/responsaveis/queries/list-solicitacoes-senha";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +27,7 @@ export default async function DashboardPage() {
     reconsideracoesPendentes,
     aguardandoManifestacao,
     solicitacoesSenhaPendentes,
+    solicitacoesSenhaEquipe,
   ] = await Promise.all([
       tem(PERMISSIONS.OCORRENCIAS_CREATE)
         ? prisma.ocorrencia.count({
@@ -50,9 +55,13 @@ export default async function DashboardPage() {
           })
         : Promise.resolve(0),
       tem(PERMISSIONS.RESPONSAVEIS_MANAGE)
-        ? prisma.solicitacaoSenhaResponsavel.count({
-            where: { colegioId: context.colegioId, atendidaEm: null },
-          })
+        ? contarSolicitacoesSenhaPendentes(context.colegioId)
+        : Promise.resolve(0),
+      tem(PERMISSIONS.USUARIOS_MANAGE)
+        ? contarSolicitacoesSenhaEquipe(
+            context.colegioId,
+            context.perfis.includes(ROLE_CODES.ADMINISTRADOR),
+          )
         : Promise.resolve(0),
     ]);
 
@@ -101,6 +110,17 @@ export default async function DashboardPage() {
       destaque:
         solicitacoesSenhaPendentes > 0
           ? `${solicitacoesSenhaPendentes} pedido(s) de senha`
+          : undefined,
+    });
+  }
+  if (tem(PERMISSIONS.USUARIOS_MANAGE)) {
+    atalhos.push({
+      href: "/usuarios",
+      titulo: "Usuários",
+      descricao: "Equipe do colégio e pedidos de nova senha.",
+      destaque:
+        solicitacoesSenhaEquipe > 0
+          ? `${solicitacoesSenhaEquipe} pedido(s) de senha`
           : undefined,
     });
   }

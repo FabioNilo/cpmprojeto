@@ -2,22 +2,21 @@
 
 import { prisma } from "@/db/prisma";
 import { getRequestMetadata } from "@/lib/http/request-metadata";
-import { mailer } from "@/lib/mail/mailer";
 import { registerAudit } from "@/modules/auditoria/services/audit-service";
 
 import { requestPasswordResetSchema } from "../schemas/password-reset-schema";
-import { criarTokenRecuperacao } from "../services/password-reset-service";
 
 export type RequestResetState = {
   enviado: boolean;
   mensagem?: string;
 };
 
-// Mensagem unica para os dois caminhos (e-mail ou sinalizacao ao colegio):
-// nao revela se o usuario existe nem qual caminho foi seguido.
+// Mensagem unica para todos os casos: nao revela se a conta existe.
 const MENSAGEM_GENERICA =
-  "Se os dados informados existirem em nosso sistema, você receberá as instruções por e-mail ou a administração do colégio entrará em contato com uma nova senha.";
+  "Pedido registrado. Se os dados informados existirem em nosso sistema, a administração do colégio entrará em contato com um link temporário para definir uma nova senha. Aguarde o contato.";
 
+// Este fluxo e publico e NUNCA cria token: so registra o pedido na fila de quem
+// atende. O link temporario e gerado depois por um gestor autenticado.
 export async function requestPasswordResetAction(
   _previousState: RequestResetState,
   formData: FormData,
@@ -45,8 +44,6 @@ export async function requestPasswordResetAction(
     },
     select: {
       id: true,
-      nome: true,
-      email: true,
       responsavel: { select: { id: true } },
       colegios: {
         where: { ativo: true, colegio: { ativo: true } },
@@ -57,55 +54,27 @@ export async function requestPasswordResetAction(
     },
   });
 
-  if (usuario?.responsavel) {
-    // Responsavel nao tem e-mail/SMTP configurado: sinaliza para quem
-    // administra responsaveis no colegio (Chefe do Corpo de Alunos,
-    // Diretor-Adjunto, Diretor PM, Admin) atender manualmente.
-    const colegioId = usuario.colegios[0]?.colegioId;
-    if (colegioId) {
-      const jaPendente = await prisma.solicitacaoSenhaResponsavel.findFirst({
-        where: { usuarioId: usuario.id, atendidaEm: null },
-        select: { id: true },
-      });
-
-      if (!jaPendente) {
-        const solicitacao = await prisma.solicitacaoSenhaResponsavel.create({
-          data: { usuarioId: usuario.id, colegioId },
-        });
-
-        await registerAudit({
-          usuarioId: usuario.id,
-          colegioId,
-          acao: "SOLICITACAO_SENHA_RESPONSAVEL",
-          entidade: "solicitacoes_senha_responsavel",
-          entidadeId: solicitacao.id,
-          metadata,
-        });
-      }
-    }
-  } else if (usuario) {
-    const token = await criarTokenRecuperacao(usuario.id, metadata);
-
-    await registerAudit({
-      usuarioId: usuario.id,
-      acao: "SOLICITACAO_RESET_SENHA",
-      entidade: "usuarios",
-      entidadeId: usuario.id,
-      metadata,
+  const colegioId = usuario?.colegios[0]?.colegioId;
+  if (usuario && colegioId) {
+    const jaPendente = await prisma.solicitacaoSenhaResponsavel.findFirst({
+      where: { usuarioId: usuario.id, atendidaEm: null },
+      select: { id: true },
     });
 
-    if (usuario.email) {
-      await mailer.send({
-        to: usuario.email,
-        subject: "Recuperação de senha - Sistema Disciplinar CPM",
-        text: [
-          `Olá ${usuario.nome},`,
-          "",
-          "Use o link abaixo para definir uma nova senha (válido por 30 minutos):",
-          `/reset-password?token=${token}`,
-          "",
-          "Se você não solicitou, ignore este email.",
-        ].join("\n"),
+    if (!jaPendente) {
+      const solicitacao = await prisma.solicitacaoSenhaResponsavel.create({
+        data: { usuarioId: usuario.id, colegioId },
+      });
+
+      await registerAudit({
+        usuarioId: usuario.id,
+        colegioId,
+        acao: usuario.responsavel
+          ? "SOLICITACAO_SENHA_RESPONSAVEL"
+          : "SOLICITACAO_RESET_SENHA",
+        entidade: "solicitacoes_senha_responsavel",
+        entidadeId: solicitacao.id,
+        metadata,
       });
     }
   }

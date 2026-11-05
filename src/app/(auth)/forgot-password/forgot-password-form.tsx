@@ -19,7 +19,7 @@ function SubmitButton() {
       disabled={pending}
       type="submit"
     >
-      {pending ? "Enviando..." : "Enviar instruções"}
+      {pending ? "Enviando..." : "Solicitar nova senha"}
     </button>
   );
 }

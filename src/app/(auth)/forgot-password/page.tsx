@@ -26,9 +26,9 @@ export default async function ForgotPasswordPage() {
       title="Recuperar senha"
     >
       <p className="mb-5 text-sm leading-6 text-slate-600">
-        Informe seu CPF ou usuário. Se houver cadastro com e-mail, enviaremos
-        um link para definir uma nova senha. Responsáveis sem e-mail cadastrado
-        recebem uma nova senha por contato direto da administração do colégio.
+        Informe seu CPF ou usuário. A administração do colégio recebe o pedido
+        e entra em contato com um link temporário para você definir uma nova
+        senha.
       </p>
       <ForgotPasswordForm />
     </AuthCard>

@@ -17,9 +17,7 @@ import { PERMISSIONS, ROLE_CODES } from "@/modules/rbac/permissions";
 import { requirePermission } from "@/modules/rbac/services/rbac-service";
 
 import {
-  atenderSolicitacaoSenhaSchema,
   createResponsavelSchema,
-  regenerarSenhaResponsavelSchema,
   toggleResponsavelAccessSchema,
   updateResponsavelSchema,
 } from "../schemas/responsavel-schema";
@@ -269,61 +267,6 @@ export async function updateResponsavelAction(
   }
 }
 
-export async function regenerarSenhaResponsavelAction(
-  _previousState: ActionState,
-  formData: FormData,
-): Promise<ActionState> {
-  const context = await requirePermission(PERMISSIONS.RESPONSAVEIS_MANAGE);
-  const parsed = regenerarSenhaResponsavelSchema.safeParse({
-    id: formData.get("id"),
-  });
-  if (!parsed.success) {
-    return actionError("Responsável inválido.");
-  }
-
-  const responsavel = await prisma.responsavel.findFirst({
-    where: {
-      id: parsed.data.id,
-      alunos: {
-        some: {
-          aluno: {
-            vinculosColegio: { some: { colegioId: context.colegioId } },
-          },
-        },
-      },
-    },
-    select: { id: true, usuarioId: true, usuario: { select: { username: true } } },
-  });
-  if (!responsavel) {
-    return actionError("Responsável não pertence ao colégio ativo.");
-  }
-
-  const senhaProvisoria = gerarSenhaProvisoria();
-  const passwordHash = await hashPassword(senhaProvisoria);
-  await prisma.$transaction(async (tx) => {
-    await tx.usuario.update({
-      where: { id: responsavel.usuarioId },
-      data: { passwordHash, mudarSenhaObrigatoria: true },
-    });
-    await registerAudit(
-      {
-        usuarioId: context.usuarioId,
-        colegioId: context.colegioId,
-        acao: "RESET_SENHA_RESPONSAVEL",
-        entidade: "responsaveis",
-        entidadeId: responsavel.id,
-        metadata: await getRequestMetadata(),
-      },
-      tx,
-    );
-  });
-
-  revalidatePath("/responsaveis");
-  return actionSuccess(
-    `Nova senha provisória para ${responsavel.usuario.username}: ${senhaProvisoria}`,
-  );
-}
-
 export async function toggleResponsavelAccessAction(
   formData: FormData,
 ): Promise<void> {
@@ -411,68 +354,4 @@ export async function toggleResponsavelAccessAction(
   });
 
   revalidatePath("/responsaveis");
-}
-
-// Atende um pedido de "esqueci minha senha" de responsavel: gera senha
-// provisoria (a repassar por telefone) e marca a solicitacao como atendida.
-// A senha antiga nunca e reaproveitada; a solicitacao nunca e apagada.
-export async function atenderSolicitacaoSenhaAction(
-  _previousState: ActionState,
-  formData: FormData,
-): Promise<ActionState> {
-  const context = await requirePermission(PERMISSIONS.RESPONSAVEIS_MANAGE);
-  const parsed = atenderSolicitacaoSenhaSchema.safeParse({
-    id: formData.get("id"),
-  });
-  if (!parsed.success) {
-    return actionError("Solicitação inválida.");
-  }
-
-  const solicitacao = await prisma.solicitacaoSenhaResponsavel.findFirst({
-    where: {
-      id: parsed.data.id,
-      colegioId: context.colegioId,
-      atendidaEm: null,
-    },
-    select: {
-      id: true,
-      usuarioId: true,
-      usuario: { select: { username: true, nome: true } },
-    },
-  });
-  if (!solicitacao) {
-    return actionError("Solicitação não encontrada ou já atendida.");
-  }
-
-  const senhaProvisoria = gerarSenhaProvisoria();
-  const passwordHash = await hashPassword(senhaProvisoria);
-  const metadata = await getRequestMetadata();
-
-  await prisma.$transaction(async (tx) => {
-    await tx.usuario.update({
-      where: { id: solicitacao.usuarioId },
-      data: { passwordHash, mudarSenhaObrigatoria: true },
-    });
-    await tx.solicitacaoSenhaResponsavel.update({
-      where: { id: solicitacao.id },
-      data: { atendidaEm: new Date(), atendidaPorId: context.usuarioId },
-    });
-    await registerAudit(
-      {
-        usuarioId: context.usuarioId,
-        colegioId: context.colegioId,
-        acao: "ATENDIMENTO_SOLICITACAO_SENHA",
-        entidade: "solicitacoes_senha_responsavel",
-        entidadeId: solicitacao.id,
-        metadata,
-      },
-      tx,
-    );
-  });
-
-  revalidatePath("/responsaveis");
-  revalidatePath("/dashboard");
-  return actionSuccess(
-    `Nova senha provisória para ${solicitacao.usuario.nome} (${solicitacao.usuario.username}): ${senhaProvisoria} - repasse por telefone.`,
-  );
 }

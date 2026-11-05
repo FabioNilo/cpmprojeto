@@ -39,12 +39,17 @@ export default async function ResetPasswordPage({
       title="Definir nova senha"
     >
       {registro && tokenValor ? (
-        <ResetPasswordForm token={tokenValor} />
+        <>
+          <p className="mb-5 text-sm leading-6 text-slate-600">
+            Este link é pessoal e funciona uma única vez.
+          </p>
+          <ResetPasswordForm token={tokenValor} />
+        </>
       ) : (
         <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          Link inválido ou expirado.{" "}
+          Link inválido, expirado ou já usado.{" "}
           <Link className="font-medium underline" href="/forgot-password">
-            Solicitar um novo
+            Pedir um novo à administração
           </Link>
           .
         </p>

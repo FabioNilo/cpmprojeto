@@ -1,28 +1,43 @@
 import "server-only";
 
+import type { Prisma, PrismaClient } from "@prisma/client";
+
 import { prisma } from "@/db/prisma";
 import type { RequestMetadata } from "@/lib/http/request-metadata";
 import { createSessionToken, hashToken } from "@/lib/security/token";
 
-export const RESET_TOKEN_TTL_MINUTOS = 30;
+import {
+  expiracaoLinkTemporario,
+  tokenRecuperacaoVigente,
+} from "./link-temporario-rules";
 
+// Cria o token do link temporario e cancela os anteriores do mesmo usuario.
+// Grave so o hash: o token puro volta apenas para quem gerou o link.
 export async function criarTokenRecuperacao(
   usuarioId: string,
   metadata?: RequestMetadata,
-): Promise<string> {
+  db: Prisma.TransactionClient | PrismaClient = prisma,
+): Promise<{ token: string; expiresAt: Date }> {
+  const agora = new Date();
   const token = createSessionToken();
+  const expiresAt = expiracaoLinkTemporario(agora);
 
-  await prisma.tokenRecuperacaoSenha.create({
+  await db.tokenRecuperacaoSenha.updateMany({
+    where: { usuarioId, usedAt: null },
+    data: { usedAt: agora },
+  });
+
+  await db.tokenRecuperacaoSenha.create({
     data: {
       usuarioId,
       tokenHash: hashToken(token),
-      expiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MINUTOS * 60 * 1000),
+      expiresAt,
       ip: metadata?.ip,
       userAgent: metadata?.userAgent,
     },
   });
 
-  return token;
+  return { token, expiresAt };
 }
 
 export async function validarTokenRecuperacao(token: string) {
@@ -31,12 +46,7 @@ export async function validarTokenRecuperacao(token: string) {
     include: { usuario: { select: { id: true, ativo: true } } },
   });
 
-  if (
-    !registro ||
-    registro.usedAt ||
-    registro.expiresAt.getTime() <= Date.now() ||
-    !registro.usuario.ativo
-  ) {
+  if (!registro || !tokenRecuperacaoVigente(registro, new Date())) {
     return null;
   }
 

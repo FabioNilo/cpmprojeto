@@ -9,6 +9,7 @@ import { hashToken } from "@/lib/security/token";
 import { registerAudit } from "@/modules/auditoria/services/audit-service";
 
 import { confirmPasswordResetSchema } from "../schemas/password-reset-schema";
+import { tokenRecuperacaoVigente } from "../services/link-temporario-rules";
 import { revogarSessoesDoUsuario } from "../services/session-service";
 
 export type ConfirmResetState = {
@@ -41,18 +42,18 @@ export async function confirmPasswordResetAction(
         include: { usuario: { select: { id: true, ativo: true } } },
       });
 
-      if (
-        !registro ||
-        registro.usedAt ||
-        registro.expiresAt.getTime() <= Date.now() ||
-        !registro.usuario.ativo
-      ) {
+      if (!registro || !tokenRecuperacaoVigente(registro, new Date())) {
         throw new Error("TOKEN_INVALIDO");
       }
 
+      // A pessoa acabou de escolher a propria senha: nao ha o que trocar de
+      // novo. O aceite do termo do responsavel continua sendo exigido.
       await tx.usuario.update({
         where: { id: registro.usuarioId },
-        data: { passwordHash: await hashPassword(parsed.data.password) },
+        data: {
+          passwordHash: await hashPassword(parsed.data.password),
+          mudarSenhaObrigatoria: false,
+        },
       });
 
       await tx.tokenRecuperacaoSenha.update({
@@ -84,7 +85,9 @@ export async function confirmPasswordResetAction(
     });
   } catch (error) {
     if (error instanceof Error && error.message === "TOKEN_INVALIDO") {
-      return { error: "Link inválido ou expirado. Solicite um novo." };
+      return {
+        error: "Link inválido ou expirado. Peça um novo à administração do colégio.",
+      };
     }
 
     return { error: "Não foi possível redefinir a senha." };
