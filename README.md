@@ -5,26 +5,14 @@ Policia Militar.
 
 ## Escopo atual
 
-Esta etapa implementa apenas:
+Sistema em uso no CPM Romulo Galvao: Next.js (App Router), TypeScript, Prisma e
+PostgreSQL, com autenticacao propria, multi-tenancy por colegio, RBAC, auditoria,
+cadastros-base, modulo disciplinar completo e portal do responsavel.
 
-- Next.js App Router
-- TypeScript
-- Tailwind CSS
-- PostgreSQL
-- Prisma
-- Docker
-- autenticacao por credenciais
-- multi-tenancy por colegio
-- RBAC
-- auditoria basica
-- cadastros-base iniciais de colegios, usuarios, alunos, responsaveis, turmas e
-  matriculas
-- transferencia cadastral de aluno entre CPMs, sem regras disciplinares
+Registros com relevancia historica sao inativados, encerrados ou transferidos,
+nao apagados fisicamente.
 
-O CRUD cadastral usa exclusao logica: registros com relevancia historica sao
-inativados, encerrados ou transferidos, nao apagados fisicamente.
-
-O modulo disciplinar ainda nao foi implementado por decisao arquitetural.
+Ver tambem `docs/DEPLOY.md` e `docs/LGPD.md`.
 
 ## Modelo de aluno transferivel
 
@@ -64,18 +52,10 @@ npm run dev
 O PostgreSQL local deste projeto usa a porta `5434` no host para evitar conflito
 com outros containers Postgres ja existentes.
 
-Credenciais iniciais do seed:
-
-```text
-usuario: admin
-senha: Admin@12345
-
-usuario: diretor
-senha: Diretor@12345
-
-usuario: responsavel
-senha: Responsavel@12345
-```
+O seed cria as contas de exemplo `admin`, `diretor` e `responsavel`. As senhas
+de exemplo, definidas em `prisma/seed.ts`, so valem em banco local ou de teste.
+Em qualquer outro banco, a conta nasce com a senha de `SEED_SENHA_<USUARIO>` ou
+com uma senha aleatoria.
 
 O seed cria duas unidades CPM e permite trocar o colegio ativo com o usuario
 `diretor`, que possui perfil `DIRETOR_PM` nas duas unidades. A troca de colegio
@@ -91,8 +71,3 @@ npm run typecheck
 npm run test
 npm run build
 ```
-
-## Regra de disciplina do projeto
-
-Nenhum modulo disciplinar deve ser implementado antes de auth, tenant, RBAC e
-auditoria basica estarem prontos e testados.

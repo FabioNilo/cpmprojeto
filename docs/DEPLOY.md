@@ -36,7 +36,6 @@ No serviço App, aba **Environment** (formato `.env`, uma linha
 |---|---|
 | `DATABASE_URL` | conexão Postgres do Supabase, **session pooler porta 5432** (não 6543), com `?schema=cpm` |
 | `SESSION_COOKIE_NAME` | `cpm_session` |
-| `SESSION_SECRET` | valor aleatório forte, **diferente** do de dev (`openssl rand -base64 32`) |
 | `NEXT_PUBLIC_APP_NAME` | `Sistema Disciplinar CPM` |
 | `SUPABASE_URL` | `https://<ref>.supabase.co` |
 | `SUPABASE_SERVICE_ROLE_KEY` | a chave `service_role` (Project Settings → API) |
@@ -68,9 +67,9 @@ antes do rollout, para não correr `migrate deploy` em paralelo.
 
 - [ ] Rotacionar a senha do banco Supabase e o JWT secret/API keys, se ainda
       não foi feito (foram expostos em uma conversa anterior).
-- [ ] `SESSION_SECRET` de produção gerado do zero (não reaproveitar o de dev;
-      gerar direto no terminal, nunca colar um valor pronto no chat/histórico
-      — ex.: `openssl rand -base64 32`).
+- [ ] Confirmar que `admin`, `diretor` e `responsavel` não aceitam mais as
+      senhas de exemplo em produção. Trocar a senha ou inativar a conta.
+- [ ] Usar o usuário restrito `cpm_app` (seção 7) e ter backup testado (seção 8).
 - [ ] `.env` real nunca commitado (`.dockerignore` e `.gitignore` já cobrem;
       confirmado no `git status` antes do primeiro push).
 - [x] Decidido (2026-09-25): schema `cpm` (dados reais) é o banco do beta.
@@ -98,3 +97,55 @@ apareceram e foram corrigidos:
   direto no painel, sem mudança de código.
 
 App confirmado no ar.
+
+## 7. Rotação de credenciais e usuário restrito
+
+Hoje o app acessa o banco com o usuário `postgres`, que também alcança o outro
+sistema do mesmo projeto Supabase. Faça estes passos em um horário sem uso, pois
+o app fica fora do ar entre os passos 2 e 5:
+
+1. No Supabase, **Project Settings → Database**: redefina a senha do banco.
+2. Gere a senha do novo usuário no seu terminal: `openssl rand -hex 32`.
+3. No **SQL Editor**, cole `docs/sql/criar-usuario-restrito-cpm.sql`, troque
+   `TROQUE_ESTA_SENHA` só no editor e execute. Confira o resultado:
+   `acesso_cpm = true`, `le_tabelas_public = false` e
+   `tem_privilegio_elevado = false`.
+4. No EasyPanel, altere `DATABASE_URL`, mantendo host, porta 5432 e `?schema=cpm`:
+   `postgresql://cpm_app.<ref>:<senha>@<host-do-pooler>:5432/postgres?schema=cpm`
+5. Refaça o deploy e teste login, abertura de um processo e download de anexo.
+6. Em **Project Settings → API**, rotacione a chave `service_role` e o JWT secret
+   e atualize `SUPABASE_SERVICE_ROLE_KEY`. Ao rotacionar o JWT secret, o outro
+   sistema do projeto também precisa receber as novas chaves.
+7. Atualize o `.env` local. Os testes de integração em `cpm_test` continuam com
+   o usuário `postgres`.
+
+Nunca cole senhas no chat nem salve no repositório.
+
+**Recuperação de senha:** um gestor gera o link temporário em `/usuarios` ou
+`/responsaveis`, e só um administrador gera link para outro administrador.
+Mantenha pelo menos dois administradores ativos. Se o único administrador perder
+a senha, será preciso gravar um novo hash bcrypt em `usuarios.password_hash`
+pelo SQL Editor, com registro do motivo.
+
+## 8. Backup
+
+Antes de confiar no backup, confirme no painel do Supabase o plano do projeto e
+se há backups disponíveis. Projetos do plano gratuito podem ser pausados por
+inatividade, então verifique também o status do projeto.
+
+Para uma cópia manual do schema `cpm`, sem precisar instalar o Postgres (use a
+imagem com a mesma versão principal do banco e a conexão **do pooler**):
+
+```bash
+docker run --rm -e DATABASE_URL="$DATABASE_URL_SEM_SCHEMA" -v "$PWD/backup-cpm:/backup" \
+  postgres:17-alpine sh -c \
+  'pg_dump "$DATABASE_URL" --schema=cpm --format=custom --file=/backup/cpm-$(date +%F).dump'
+```
+
+`DATABASE_URL_SEM_SCHEMA` é a conexão sem o trecho `?schema=cpm`.
+
+- O arquivo contém dados reais de alunos: criptografe (por exemplo, com 7-Zip e
+  AES-256) e guarde fora do repositório e fora de pastas sincronizadas.
+- Os anexos ficam no bucket `anexos-disciplina` e **não** entram nesse arquivo.
+- Backup só vale depois de testado: restaure em um banco descartável pelo menos
+  uma vez.

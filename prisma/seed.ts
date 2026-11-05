@@ -1,3 +1,5 @@
+import { randomBytes } from "node:crypto";
+
 import { PrismaClient } from "@prisma/client";
 
 import { hashPassword } from "../src/lib/security/password";
@@ -8,6 +10,28 @@ import {
 } from "../src/modules/rbac/role-permission-matrix";
 
 const prisma = new PrismaClient();
+
+// As senhas de exemplo so valem em banco local ou de teste. Em qualquer outro
+// banco (producao), a conta criada pelo seed nasce com a senha da variavel
+// SEED_SENHA_<USUARIO> ou, sem ela, com uma senha aleatoria que ninguem conhece.
+// Contas que ja existem nunca tem a senha alterada pelo seed.
+function bancoLocalOuDeTeste(): boolean {
+  const url = new URL(process.env.DATABASE_URL ?? "postgresql://localhost");
+  return (
+    ["localhost", "127.0.0.1"].includes(url.hostname) ||
+    url.searchParams.get("schema") === "cpm_test"
+  );
+}
+
+function senhaInicial(usuario: string, senhaDeExemplo: string): string {
+  if (bancoLocalOuDeTeste()) {
+    return senhaDeExemplo;
+  }
+  return (
+    process.env[`SEED_SENHA_${usuario.toUpperCase()}`] ??
+    randomBytes(32).toString("base64url")
+  );
+}
 
 const permissionDefinitions = [
   {
@@ -495,7 +519,7 @@ async function main() {
       username: "admin",
       email: "admin@cpm.local",
       cpf: "00000000000",
-      passwordHash: await hashPassword("Admin@12345"),
+      passwordHash: await hashPassword(senhaInicial("admin", "Admin@12345")),
     },
   });
 
@@ -571,7 +595,7 @@ async function main() {
       username: "diretor",
       email: "diretor@cpm.local",
       cpf: "22222222222",
-      passwordHash: await hashPassword("Diretor@12345"),
+      passwordHash: await hashPassword(senhaInicial("diretor", "Diretor@12345")),
     },
   });
 
@@ -725,7 +749,7 @@ async function main() {
       username: "responsavel",
       email: "responsavel@cpm.local",
       cpf: "11111111111",
-      passwordHash: await hashPassword("Responsavel@12345"),
+      passwordHash: await hashPassword(senhaInicial("responsavel", "Responsavel@12345")),
     },
   });
 

@@ -45,7 +45,7 @@ vínculo ativo ao colégio não acessa" — o segundo entra quando o F4 (matríc
 ```bash
 npm run db:test:up
 npx prisma migrate deploy   # com DATABASE_URL apontando para :5435
-npm run prisma:seed         # idem — cria admin / Admin@12345
+npm run prisma:seed         # idem — cria as contas de exemplo
 npm run build && npm run test:e2e
 ```
 
