@@ -38,7 +38,7 @@ export function CreateAlunoForm({ turmas }: CreateAlunoFormProps) {
         <TextField
           label="Matrícula geral"
           name="matriculaGeral"
-          placeholder="Ex.: 24109"
+          placeholder="Ex.: 12345"
         />
         <SelectField
           label="Turma inicial"

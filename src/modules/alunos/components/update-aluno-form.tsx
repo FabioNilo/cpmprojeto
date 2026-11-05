@@ -45,7 +45,7 @@ export function UpdateAlunoForm({
           defaultValue={matriculaGeral ?? ""}
           label="Matrícula geral"
           name="matriculaGeral"
-          placeholder="Ex.: 24109"
+          placeholder="Ex.: 12345"
         />
         <label className="flex items-center gap-2 text-sm text-slate-700">
           <input

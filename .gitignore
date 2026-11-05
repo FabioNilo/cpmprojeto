@@ -17,3 +17,8 @@ prisma/import/.data/
 .playwright
 test-results
 playwright-report
+
+# Documentos com dados reais de alunos: copia local, nunca versionar
+docs/privado/
+# Telas capturadas para o manual (geradas com dados ficticios)
+.manual-telas/

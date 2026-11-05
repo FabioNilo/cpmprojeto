@@ -5,16 +5,15 @@
 //   node scripts/gerar-manual-usuario.cjs
 // Gera docs/Manual-do-Usuario-Sistema-Disciplinar-CPM.pdf
 //
-// As imagens de tela ficam no scratchpad da sessão (não versionadas) - o
-// script só precisa delas existirem no momento de gerar o PDF; os bytes já
-// ficam embutidos no arquivo final.
+// As imagens de tela ficam em .manual-telas/ (fora do git) e devem sempre vir
+// de um app local com dados fictícios: ver scripts/manual-dados-ficticios.cjs e
+// scripts/manual-capturar-telas.cjs. Nunca capture telas com alunos reais.
 
 const fs = require("fs");
 const path = require("path");
 const { PDFDocument, StandardFonts, rgb } = require("pdf-lib");
 
-const IMG_DIR =
-  "C:/Users/cippa/AppData/Local/Temp/claude/c--dev-cpm-disciplinar/885c00b1-5c98-4751-ba6c-bbd438f838da/scratchpad/screenshots";
+const IMG_DIR = path.join(__dirname, "..", ".manual-telas");
 
 const PAGE_W = 595.28;
 const PAGE_H = 841.89;
@@ -73,7 +72,7 @@ const SECOES = [
         ],
       },
       { subtitulo: "Esqueci minha senha" },
-      { p: 'Clique em "Esqueci minha senha" e siga as instruções na tela. Para responsáveis, o pedido de nova senha é atendido por alguém do Corpo de Alunos ou da Direção (ver seção Responsáveis, no Grupo Comando) - não chega e-mail automático.' },
+      { p: 'Clique em "Esqueci minha senha" e informe seu CPF ou usuário. A administração do colégio recebe o pedido e envia a você um link temporário, normalmente por WhatsApp ou telefone. O link vale por 24 horas e funciona uma única vez. Abra-o e cadastre sua nova senha. O sistema não envia e-mail.' },
     ],
   },
 ];
@@ -207,7 +206,7 @@ const SECOES_COMANDO = [
           "Perfil no colégio ativo - define o que a pessoa vai poder ver e fazer.",
         ],
       },
-      { p: 'Na lista abaixo do formulário é possível inativar um usuário ou editar seus dados.' },
+      { p: 'Na lista abaixo do formulário é possível inativar um usuário, editar seus dados ou usar "Gerar link temporário" para a pessoa cadastrar uma nova senha. O link vale por 24 horas, funciona uma única vez e deve ser enviado somente à própria pessoa.' },
     ],
   },
   {
@@ -219,8 +218,8 @@ const SECOES_COMANDO = [
         bullets: [
           "Ao cadastrar um responsável, o sistema gera uma senha provisória automaticamente (não é preciso digitar uma) - ela aparece uma única vez na tela, para ser repassada ao responsável.",
           "No primeiro acesso, o responsável é obrigado a trocar essa senha e aceitar o Termo de Responsabilidade.",
-          '"Nova senha provisória" - gera outra senha caso o responsável a perca.',
-          '"Solicitações de nova senha" - fila de pedidos feitos pelo próprio responsável (que não tem e-mail cadastrado para recuperação automática); atenda gerando uma nova senha e repassando por telefone.',
+          '"Gerar link temporário" - cria um link de nova senha, válido por 24 horas e de uso único. Envie somente à própria pessoa. Gerar outro cancela o anterior.',
+          '"Solicitações de nova senha" - fila de pedidos feitos pelo próprio responsável. Atenda gerando o link temporário.',
         ],
       },
     ],

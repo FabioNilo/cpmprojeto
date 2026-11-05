@@ -42,7 +42,7 @@ describe("separarNaturezaRelato", () => {
     // Regressao: antes esse caso caia em "relato" sem ponto final, contando
     // como categoria diferente do mesmo texto quando ELE TINHA continuacao
     // em outro processo - subestimava a natureza mais recorrente (11 em vez
-    // de 21 no caso real do Joaquim/24109).
+    // de 21 no caso real de um aluno do historico importado).
     const r = separarNaturezaRelato(
       "Deixar de realizar tarefa atribuida pelo professor ou coordenador",
     );
@@ -124,7 +124,7 @@ describe("agruparPorPublicacao", () => {
 });
 
 describe("construirResumoFad (fim a fim)", () => {
-  it("reproduz o caso real do Joaquim/24109 nos pontos criticos", () => {
+  it("reproduz um caso do historico importado nos pontos criticos", () => {
     const legado = (
       relato: string,
       tipo: string,
