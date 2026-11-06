@@ -2,7 +2,12 @@ import Link from "next/link";
 
 import { AdminPage } from "@/components/layout/admin-page";
 import { DataTable, type Column } from "@/components/ui/data-table";
+import { STATUS_OCORRENCIA } from "@/modules/disciplina/constants";
 import { listOcorrencias } from "@/modules/disciplina/queries/list-ocorrencias";
+import {
+  resolverPeriodo,
+  ROTULO_STATUS_OCORRENCIA,
+} from "@/modules/disciplina/services/painel-gestao-rules";
 import { PERMISSIONS } from "@/modules/rbac/permissions";
 import { requireAnyPermission } from "@/modules/rbac/services/rbac-service";
 
@@ -15,7 +20,13 @@ function formatarData(valor: Date): string {
   }).format(valor);
 }
 
-export default async function OcorrenciasPage() {
+type SearchParams = Record<string, string | string[] | undefined>;
+
+export default async function OcorrenciasPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
   const context = await requireAnyPermission([
     PERMISSIONS.OCORRENCIAS_READ_OWN,
     PERMISSIONS.OCORRENCIAS_READ_SCHOOL,
@@ -25,9 +36,27 @@ export default async function OcorrenciasPage() {
   );
   const podeCriar = context.permissoes.includes(PERMISSIONS.OCORRENCIAS_CREATE);
 
+  // Filtro vindo do painel de gestao. Valor invalido e ignorado.
+  const params = await searchParams;
+  const status = STATUS_OCORRENCIA.find((s) => s === params.status);
+  const agora = new Date();
+  const periodo = resolverPeriodo(
+    {
+      periodo: "livre",
+      de: typeof params.de === "string" ? params.de : undefined,
+      ate: typeof params.ate === "string" ? params.ate : undefined,
+    },
+    agora.getFullYear(),
+    agora,
+  );
+  const temPeriodo = periodo.preset === "livre";
+
   const ocorrencias = await listOcorrencias(context.colegioId, {
     escopo: podeVerEscola ? "SCHOOL" : "OWN",
     usuarioId: context.usuarioId,
+    status,
+    dataInicio: temPeriodo ? periodo.inicio : undefined,
+    dataFimExclusivo: temPeriodo ? periodo.fimExclusivo : undefined,
   });
 
   type Row = (typeof ocorrencias)[number];
@@ -86,6 +115,21 @@ export default async function OcorrenciasPage() {
             Nova comunicação
           </Link>
         </div>
+      ) : null}
+      {status || temPeriodo ? (
+        <p className="mb-4 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+          Filtro:
+          {status ? ` ${ROTULO_STATUS_OCORRENCIA[status]}` : ""}
+          {status && temPeriodo ? " ·" : ""}
+          {temPeriodo ? ` ${periodo.rotulo}` : ""}
+          {ocorrencias.length === 100 ? " · 100 mais recentes" : ""}.{" "}
+          <Link
+            className="font-semibold text-navy-800 hover:underline"
+            href="/disciplina/ocorrencias"
+          >
+            Limpar filtro
+          </Link>
+        </p>
       ) : null}
       <DataTable
         columns={columns}

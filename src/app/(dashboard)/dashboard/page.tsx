@@ -2,6 +2,15 @@ import Link from "next/link";
 
 import { AdminPage } from "@/components/layout/admin-page";
 import { prisma } from "@/db/prisma";
+import { PainelGestao } from "@/modules/disciplina/components/painel-gestao";
+import {
+  getAnoLetivoAtual,
+  getPainelGestao,
+} from "@/modules/disciplina/queries/get-painel-gestao";
+import {
+  podeVerPainelGestao,
+  resolverPeriodo,
+} from "@/modules/disciplina/services/painel-gestao-rules";
 import { PERMISSIONS, ROLE_CODES } from "@/modules/rbac/permissions";
 import { requirePermission } from "@/modules/rbac/services/rbac-service";
 import {
@@ -18,9 +27,37 @@ type Atalho = {
   destaque?: string;
 };
 
-export default async function DashboardPage() {
+type SearchParams = Record<string, string | string[] | undefined>;
+
+function parametro(valor: string | string[] | undefined): string | undefined {
+  return Array.isArray(valor) ? valor[0] : valor;
+}
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
   const context = await requirePermission(PERMISSIONS.DASHBOARD_ACCESS);
   const tem = (p: string) => context.permissoes.includes(p);
+  const params = await searchParams;
+
+  // A autorizacao fica no servidor: sem o perfil, os dados nem sao consultados.
+  const agora = new Date();
+  const gestao = podeVerPainelGestao(context.perfis)
+    ? resolverPeriodo(
+        {
+          periodo: parametro(params.periodo),
+          de: parametro(params.de),
+          ate: parametro(params.ate),
+        },
+        await getAnoLetivoAtual(context.colegioId, agora),
+        agora,
+      )
+    : null;
+  const dadosGestao = gestao
+    ? await getPainelGestao(context.colegioId, gestao, agora)
+    : null;
 
   const [
     rascunhos,
@@ -148,10 +185,30 @@ export default async function DashboardPage() {
 
   return (
     <AdminPage
-      description="Escolha uma área. As comunicações podem ser registradas direto do celular."
+      description={
+        gestao
+          ? `Visão geral do andamento disciplinar · ${gestao.rotulo}.`
+          : "Escolha uma área. As comunicações podem ser registradas direto do celular."
+      }
       eyebrow={context.colegioNome}
-      title="Início"
+      title={gestao ? "Painel de gestão" : "Início"}
     >
+      {gestao && dadosGestao ? (
+        <>
+          <PainelGestao
+            dados={dadosGestao}
+            filtro={{
+              situacao: parametro(params.situacao),
+              pendencias: parametro(params.pendencias),
+            }}
+            periodo={gestao}
+          />
+          <h2 className="mb-3 text-base font-semibold text-slate-950">
+            Acesso rápido
+          </h2>
+        </>
+      ) : null}
+
       {tem(PERMISSIONS.OCORRENCIAS_CREATE) ? (
         <Link
           className="mb-5 flex items-center justify-between rounded-xl bg-navy-900 p-5 text-white active:bg-navy-800"
