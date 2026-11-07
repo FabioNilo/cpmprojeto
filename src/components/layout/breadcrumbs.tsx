@@ -27,6 +27,8 @@ const SEGMENT_LABELS: Record<string, string> = {
   conta: "Minha conta",
 };
 
+const ID_TECNICO = /^[0-9a-f]{8}-[0-9a-f-]{27}$/i;
+
 export function Breadcrumbs() {
   const pathname = usePathname();
   const segments = pathname.split("/").filter(Boolean);
@@ -36,10 +38,13 @@ export function Breadcrumbs() {
   }
 
   return (
-    <nav aria-label="Trilha de navegação" className="mb-4 text-xs text-slate-500">
+    <nav aria-label="Trilha de navegação"
+      className="mb-4 hidden text-xs text-slate-500 md:block">
       {segments.map((segment, index) => {
         const href = `/${segments.slice(0, index + 1).join("/")}`;
-        const label = SEGMENT_LABELS[segment] ?? segment;
+        const label =
+          SEGMENT_LABELS[segment] ??
+          (ID_TECNICO.test(segment) ? "Detalhe" : segment);
         const isLast = index === segments.length - 1;
 
         return (

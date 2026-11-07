@@ -24,11 +24,21 @@ export function SubmitButton({
 
   return (
     <button
-      className={`inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-semibold disabled:cursor-not-allowed ${variants[variant]}`}
+      className={`inline-flex h-10 w-full items-center justify-center gap-2 rounded-md px-4 text-sm font-semibold disabled:cursor-not-allowed sm:w-auto ${variants[variant]}`}
       disabled={pending}
       type="submit"
     >
-      {pending ? pendingLabel : children}
+      {pending ? (
+        <>
+          <span
+            aria-hidden
+            className="girando h-4 w-4 rounded-full border-2 border-current border-r-transparent"
+          />
+          {pendingLabel}
+        </>
+      ) : (
+        children
+      )}
     </button>
   );
 }

@@ -18,7 +18,7 @@ export default function NotFound() {
           className="mt-6 inline-flex h-10 items-center rounded-md bg-navy-900 px-4 text-sm font-semibold text-white hover:bg-navy-800"
           href="/dashboard"
         >
-          Voltar ao dashboard
+          Voltar ao início
         </Link>
       </section>
     </main>

@@ -4,6 +4,10 @@
 
 :root {
   color-scheme: light;
+  --barra-inferior: 64px;
+  --mov-curto: 120ms;
+  --mov-medio: 200ms;
+  --curva-saida: cubic-bezier(0.2, 0, 0, 1);
 }
 
 * {
@@ -14,9 +18,223 @@ body {
   margin: 0;
   background: #f4f6f8;
   color: #111827;
+  -webkit-tap-highlight-color: transparent;
 }
 
 button,
 input {
   font: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid #a98227;
+  outline-offset: 2px;
+}
+
+/* Blocos de edicao nao podem passar da largura do cartao. */
+details {
+  max-width: 100%;
+}
+
+/* Codigos longos do catalogo precisam quebrar linha. */
+summary {
+  overflow-wrap: anywhere;
+}
+
+/* Celular: alvos de toque de 44px e campos de 16px, para o iPhone nao dar zoom
+   ao focar. Fica aqui para valer em todas as telas; o desktop nao muda. */
+@media (max-width: 767px) {
+  input:not([type="checkbox"], [type="radio"], [type="hidden"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+    min-height: 44px;
+  }
+
+  input[type="checkbox"],
+  input[type="radio"] {
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+    accent-color: #0b1b31;
+  }
+
+  button,
+  a.inline-flex {
+    min-height: 44px;
+  }
+
+  summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    list-style: none;
+  }
+
+  summary::-webkit-details-marker {
+    display: none;
+  }
+
+  summary::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    flex-shrink: 0;
+    margin-left: 2px;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(-45deg);
+    transition: transform var(--mov-medio) var(--curva-saida);
+  }
+
+  details[open] > summary::before {
+    transform: rotate(45deg);
+  }
+
+  .espaco-barra-inferior {
+    padding-bottom: calc(var(--barra-inferior) + env(safe-area-inset-bottom) + 24px);
+  }
+}
+
+/* Animacoes curtas, que indicam o que aconteceu. Todas somem com a preferencia
+   de reduzir movimento, no fim deste arquivo. */
+@keyframes entrada {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes aparecer {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes folha-sobe {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes folha-desce {
+  to {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes fundo-some {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes confirmacao {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
+@keyframes brilho {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes girar {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.anim-entrada {
+  animation: entrada var(--mov-medio) var(--curva-saida);
+}
+
+.anim-confirmacao {
+  animation: confirmacao var(--mov-medio) var(--curva-saida);
+}
+
+details[open] > :not(summary) {
+  animation: entrada var(--mov-medio) var(--curva-saida);
+}
+
+button,
+a {
+  transition:
+    background-color var(--mov-curto) ease,
+    color var(--mov-curto) ease,
+    transform var(--mov-curto) var(--curva-saida);
+}
+
+@media (hover: none) {
+  button:not(:disabled):active,
+  a.block:active,
+  a.inline-flex:active,
+  a.flex:active {
+    transform: scale(0.98);
+  }
+}
+
+.folha {
+  width: 100%;
+  max-width: 100%;
+  max-height: 85dvh;
+  margin: auto 0 0;
+  padding: 0;
+  border: 0;
+  border-radius: 16px 16px 0 0;
+  background: #fff;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.folha[open] {
+  animation: folha-sobe var(--mov-medio) var(--curva-saida);
+}
+
+.folha::backdrop {
+  background: rgb(7 17 31 / 0.5);
+  animation: aparecer var(--mov-medio) ease;
+}
+
+.folha[data-fechando] {
+  animation: folha-desce 160ms ease-in forwards;
+}
+
+.folha[data-fechando]::backdrop {
+  animation: fundo-some 160ms ease-in forwards;
+}
+
+.esqueleto {
+  border-radius: 8px;
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 200% 100%;
+  animation: brilho 1.4s linear infinite;
+}
+
+.girando {
+  animation: girar 700ms linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after,
+  ::backdrop {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+
+  button:not(:disabled):active,
+  a:active {
+    transform: none !important;
+  }
+
+  .esqueleto {
+    animation: none !important;
+  }
 }

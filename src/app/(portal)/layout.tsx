@@ -54,7 +54,9 @@ export default async function PortalLayout({
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-2xl px-4 py-5">{children}</main>
+      <main className="mx-auto max-w-2xl px-4 py-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+        {children}
+      </main>
     </div>
   );
 }

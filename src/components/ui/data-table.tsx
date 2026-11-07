@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+const COLUNA_ACOES = "Ações";
+
 export type Column<T> = {
   header: string;
   render: (row: T) => React.ReactNode;
@@ -51,14 +53,22 @@ export function DataTable<T>({
                 </div>
               ) : null}
               <dl className="grid grid-cols-[minmax(0,8rem)_1fr] gap-x-3 gap-y-1 text-sm">
-                {colunasCard.map((column) => (
-                  <div key={column.header} className="contents">
-                    <dt className="text-slate-500">{column.header}</dt>
-                    <dd className="min-w-0 break-words text-slate-800">
-                      {column.render(row)}
-                    </dd>
-                  </div>
-                ))}
+                {colunasCard.map((column) =>
+                  column.header === COLUNA_ACOES ? (
+                    // Botoes e formularios usam a largura inteira do cartao.
+                    <div className="col-span-2 mt-2" key={column.header}>
+                      <dt className="sr-only">{column.header}</dt>
+                      <dd className="min-w-0">{column.render(row)}</dd>
+                    </div>
+                  ) : (
+                    <div key={column.header} className="contents">
+                      <dt className="text-slate-500">{column.header}</dt>
+                      <dd className="min-w-0 break-words text-slate-800">
+                        {column.render(row)}
+                      </dd>
+                    </div>
+                  ),
+                )}
               </dl>
             </>
           );

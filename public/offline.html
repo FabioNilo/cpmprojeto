@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0b1b31" />
+    <title>Sem conexão</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        background: #0b1b31;
+        font-family: system-ui, sans-serif;
+        color: #111827;
+      }
+      main {
+        width: 100%;
+        max-width: 420px;
+        padding: 24px;
+        border-radius: 12px;
+        background: #fff;
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 22px;
+      }
+      p {
+        margin: 0 0 20px;
+        line-height: 1.5;
+        color: #475569;
+      }
+      button {
+        width: 100%;
+        min-height: 44px;
+        border: 0;
+        border-radius: 6px;
+        background: #0b1b31;
+        color: #fff;
+        font: inherit;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Sem conexão com a internet</h1>
+      <p>O sistema precisa de internet para funcionar. Verifique a conexão e tente de novo.</p>
+      <button onclick="location.reload()" type="button">Tentar de novo</button>
+    </main>
+  </body>
+</html>
