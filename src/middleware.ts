@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/forgot-password", "/reset-password"];
+const PUBLIC_PATHS = [
+  "/login",
+  "/forgot-password",
+  "/reset-password",
+  "/api/saude",
+];
 const SESSION_COOKIE_NAME = process.env.SESSION_COOKIE_NAME ?? "cpm_session";
 
 export function middleware(request: NextRequest) {

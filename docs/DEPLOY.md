@@ -149,3 +149,66 @@ docker run --rm -e DATABASE_URL="$DATABASE_URL_SEM_SCHEMA" -v "$PWD/backup-cpm:/
 - Os anexos ficam no bucket `anexos-disciplina` e **não** entram nesse arquivo.
 - Backup só vale depois de testado: restaure em um banco descartável pelo menos
   uma vez.
+
+## 9. Monitor do banco
+
+A rota `/api/saude` mede o banco e responde **200** quando está tudo bem e **503**
+quando há atenção ou problema. Um verificador externo gratuito a consulta a cada
+poucos minutos e avisa você. A rota é pública e, sem token, devolve só o estado e
+os códigos dos alertas, sem números nem dados de alunos.
+
+| Resposta | Significa |
+|---|---|
+| `{"status":"ok","alertas":[]}` | Tudo dentro dos limites. |
+| `status: "atencao"` | Algum limite passou do primeiro nível. |
+| `status: "critico"` | Banco fora do ar (`BANCO_FORA`) ou limite quase esgotado. |
+
+Códigos de alerta: `BANCO_FORA` (não respondeu em 8 s: pausado, fora do ar ou
+inalcançável), `BANCO_LENTO` (acima de 1,5 s atenção, 5 s crítico),
+`TAMANHO_ALTO` (70% atenção, 90% crítico do limite) e `CONEXOES_ALTAS` (80% e 95%).
+
+**Variáveis (opcionais, aba Environment do EasyPanel):**
+
+| Variável | Valor |
+|---|---|
+| `MONITOR_LIMITE_BANCO_MB` | Limite do plano. Free = `500` (padrão), Pro = `8192`. O limite vale para o projeto inteiro, inclusive o outro sistema que usa o mesmo projeto Supabase. |
+| `MONITOR_TOKEN` | Gere com `openssl rand -hex 24`. Com ele, a rota devolve também as medidas. |
+
+**Ver os números** (troque o endereço e o token):
+
+```bash
+curl -s https://SEU-DOMINIO/api/saude -H "Authorization: Bearer SEU_TOKEN"
+```
+
+**Configurar o aviso (exemplo com o UptimeRobot, plano gratuito):**
+
+1. Crie um monitor do tipo **Keyword** em `https://SEU-DOMINIO/api/saude`.
+2. Palavra-chave: `"status":"ok"`, alertando quando **não existir**. Intervalo: 5 minutos.
+3. Em **Alert Contacts**, conecte o Telegram (ou outro canal) e associe ao monitor.
+4. Teste: pare o banco local ou use uma conexão inválida e confira se o aviso chega.
+
+Cuidados:
+
+- O resultado fica em memória por 1 minuto, então consultas seguidas não pesam no banco.
+- Não use `/api/saude` como health check do EasyPanel: se o banco cair, o painel
+  reiniciaria o app sem necessidade. Mantenha `/login` para isso.
+- As consultas regulares geram atividade no banco, o que pode reduzir o risco de
+  pausa por inatividade no plano gratuito. Não conte com isso como garantia:
+  confirme a regra atual de pausa na documentação do Supabase.
+- As conexões contadas incluem as do outro sistema do mesmo projeto e as internas
+  do Supabase. O limite real do pooler pode ser menor que `max_connections`.
+
+### Se o Supabase não der conta
+
+O monitor só avisa. O que levar para a Cloudflare R2, nesta ordem:
+
+1. **Backups diários do Postgres** (seção 8) enviados ao R2, com restauração testada.
+2. **Anexos** (`anexos-disciplina`) no R2, com URL assinada de curta duração. O padrão
+   já existe em `C:\get\clinica-odonto-boletos\lib\storage\core.ts` (driver
+   `r2`, SDK S3, bucket privado, nunca sobrescreve). Falta adaptar
+   `src/lib/storage/supabase-storage.ts`; **ainda não foi feito**.
+3. **Banco inteiro** só em último caso: novo Postgres, `pg_dump` do schema `cpm`,
+   restauração, troca da `DATABASE_URL` e teste de login e abertura de um processo.
+
+Com 9,7 MB no schema `cpm` e 31,4 MB no projeto (medição de 07/11/2026), o tamanho
+não é o risco do momento; a pausa por inatividade é.
