@@ -34,9 +34,16 @@ import {
   podeEnviarOcorrencia,
   podeIniciarAveriguacao,
 } from "../services/ocorrencia-rules";
-import { proximoNumero } from "../services/numeracao-service";
+import {
+  gravarNumerosProcessos,
+  proximosNumeros,
+} from "../services/numeracao-service";
 
 const CAMINHO = "/disciplina/ocorrencias";
+
+// O padrao do Prisma (5 s) e curto para envios com varios alunos quando o
+// banco esta em outra regiao. maxWait: espera por conexao livre no pool.
+const TRANSACAO_LONGA = { timeout: 20_000, maxWait: 10_000 };
 
 function podeGerir(
   context: TenantContext,
@@ -134,8 +141,9 @@ export async function createOcorrenciaAction(
       );
 
       return ocorrencia.id;
-    });
-  } catch {
+    }, TRANSACAO_LONGA);
+  } catch (error) {
+    console.error("[createOcorrenciaAction] falha ao registrar", error);
     return actionError("Não foi possível registrar a comunicação.");
   }
 
@@ -274,7 +282,10 @@ export async function enviarOcorrenciaAction(formData: FormData): Promise<void> 
 
     // Cada aluno marcado gera um numero oficial INDEPENDENTE (a marcacao de
     // varios nomes e so um atalho de registro; a defesa de cada aluno corre
-    // separada). Os numeros saem do contador atomico, um a um.
+    // separada). Os numeros saem do contador atomico, reservados em bloco
+    // (uma ida ao banco) e gravados todos numa unica instrucao: antes eram
+    // 2 consultas por aluno e o envio de 5 alunos estourava o tempo limite
+    // da transacao com o banco distante.
     const processosOrdenados = [...ocorrencia.alunos].sort(
       (a, b) => a.ordem - b.ordem,
     );
@@ -283,13 +294,17 @@ export async function enviarOcorrenciaAction(formData: FormData): Promise<void> 
     const numerosGerados: string[] = [];
     const notificacoes: Prisma.NotificacaoResponsavelCreateManyInput[] = [];
 
-    for (const processo of processosOrdenados) {
-      const seq = await proximoNumero(tx, context.colegioId, "OCORRENCIA", ano);
+    const sequencias = await proximosNumeros(
+      tx,
+      context.colegioId,
+      "OCORRENCIA",
+      ano,
+      processosOrdenados.length,
+    );
+
+    for (const [indice, processo] of processosOrdenados.entries()) {
+      const seq = sequencias[indice];
       const numeroProcesso = formatarNumeroOcorrencia(codigo, ano, seq);
-      await tx.ocorrenciaAluno.update({
-        where: { id: processo.id },
-        data: { numeroProcesso, numeroSequencial: seq, anoNumeracao: ano },
-      });
       numerosGerados.push(numeroProcesso);
       if (primeiroSeq === null) {
         primeiroSeq = seq;
@@ -312,6 +327,16 @@ export async function enviarOcorrenciaAction(formData: FormData): Promise<void> 
         });
       }
     }
+
+    await gravarNumerosProcessos(
+      tx,
+      ano,
+      processosOrdenados.map((processo, indice) => ({
+        id: processo.id,
+        numeroProcesso: numerosGerados[indice],
+        numeroSequencial: sequencias[indice],
+      })),
+    );
 
     await tx.ocorrencia.update({
       where: { id: ocorrencia.id },
@@ -343,6 +368,9 @@ export async function enviarOcorrenciaAction(formData: FormData): Promise<void> 
       },
       tx,
     );
+  }, TRANSACAO_LONGA).catch((error: unknown) => {
+    console.error("[enviarOcorrenciaAction] falha ao enviar", parsed.data.id, error);
+    throw error;
   });
 
   revalidatePath(`${CAMINHO}/${parsed.data.id}`);
