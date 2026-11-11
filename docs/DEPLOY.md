@@ -1,5 +1,39 @@
 # Deploy em produção (EasyPanel)
 
+> **Desde 11/11/2026 o banco roda na própria VPS** (seção 0). As seções 1–8
+> abaixo descrevem a fase anterior, com o banco no Supabase, e ficam como
+> histórico. Os **anexos continuam no Supabase Storage**.
+
+## 0. Situação atual (11/11/2026)
+
+- VPS Hostinger no Brasil, Easypanel. O app é o serviço `cpm` do projeto
+  **`yt`** (o Easypanel grátis permite só 3 projetos, todos em uso).
+- Banco: serviço Postgres 17 **`cpm-db`** no mesmo projeto, sem porta
+  pública. Host interno `yt_cpm-db`, banco `cpm`, schema `cpm`.
+  - `cpm` = dono do banco (superusuário do container).
+  - `cpm_app` = usuário do app, dono só do schema `cpm`
+    (`docs/sql/criar-usuario-restrito-cpm.sql`).
+  - `DATABASE_URL=postgresql://cpm_app:<senha>@yt_cpm-db:5432/cpm?schema=cpm`
+- Senhas só na VPS: `/root/cpm/secrets.env` (chmod 600). Variáveis do app em
+  `/root/cpm/app.env.vps`; as antigas (Supabase) em
+  `/root/cpm/app.env.supabase`.
+- Motivo da mudança: com o banco no Supabase us-west-2 cada consulta levava
+  ~216 ms a partir da VPS; telas lentas e envio de comunicação com 5 alunos
+  estourando o tempo limite da transação. Na VPS: ~2 ms.
+- Backup: o `cpm-db` entra no backup diário da VPS (`/root/backup/backup.sh`,
+  06:30 UTC, `pg_dumpall` cifrado no Cloudflare R2). Restauração testada em
+  11/11/2026 (48 tabelas, 17.912 linhas idênticas).
+- **Voltar ao Supabase** (se precisar): o schema `cpm` antigo continua lá,
+  intacto, mas parado em 11/11/2026 10:53 UTC. Copiar os dados novos de volta
+  antes (pg_dump do `cpm-db`) e então
+  `ep services.app.updateEnv` com `app.env.supabase` + `deployService`.
+- Cópia Supabase → VPS (refazível): `/root/cpm/copiar.sh` (pg_dump do schema,
+  restaura no `cpm-db`, recria `cpm_app`, compara as contagens das tabelas).
+- `MONITOR_LIMITE_BANCO_MB` ainda é 500 (limite do Supabase Free); na VPS o
+  limite real é o disco.
+
+---
+
 O banco de dados (Postgres + Storage de anexos) já roda no Supabase, fora
 deste deploy. Este documento cobre só a aplicação Next.js.
 
