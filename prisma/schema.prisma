@@ -4,6 +4,10 @@ generator client {
   // producao (Dockerfile). "prisma generate" roda dentro do container durante
   // o build, entao o alvo correto e sempre incluido.
   binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+  // "relationJoins": cada findX com include vira UMA consulta SQL (JOIN/LATERAL)
+  // em vez de uma consulta por relacao. Com o banco longe do app, cada ida ao
+  // banco custa ~180 ms; sessao + permissoes caiam de 10 consultas para 2.
+  previewFeatures = ["relationJoins"]
 }
 
 datasource db {
